@@ -8,6 +8,7 @@ import type { CartRow, Product } from "../types/models";
 function PosView() {
   const [cart, setCart] = useState<CartRow[]>([]);
   const [message, setMessage] = useState<string>("Escanea un producto para iniciar la venta.");
+  const [loadingBuy, setLoadingBuy] = useState(false);
 
   const totalVenta = useMemo(
     () => cart.reduce((acc, row) => acc + row.subtotal, 0),
@@ -106,6 +107,48 @@ function PosView() {
     setMessage("Carrito limpio.");
   };
 
+  const comprar = async () => {
+    if (!cart.length) {
+      setMessage("No hay productos en el carrito.");
+      return;
+    }
+
+    setLoadingBuy(true);
+    try {
+      const {
+        data: { user },
+        error: userError
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        setMessage("No hay sesion activa. Inicia sesion para registrar la compra.");
+        return;
+      }
+
+      const payload = {
+        p_usuario_id: user.id,
+        p_total_venta: Number(totalVenta.toFixed(2)),
+        p_detalles: cart.map((item) => ({
+          productoId: item.productoId,
+          cantidad: item.cantidad,
+          precioUnitario: item.precioUnitario,
+          subtotal: Number(item.subtotal.toFixed(2))
+        }))
+      };
+
+      const { error } = await supabase.rpc("registrar_venta_con_detalles", payload);
+      if (error) {
+        setMessage(`Error al registrar la compra: ${error.message}`);
+        return;
+      }
+
+      setCart([]);
+      setMessage("Compra registrada correctamente.");
+    } finally {
+      setLoadingBuy(false);
+    }
+  };
+
   return (
     <section className="space-y-3">
       <header>
@@ -116,7 +159,7 @@ function PosView() {
       <div className="grid gap-3 lg:grid-cols-2">
         <div className="panel space-y-3">
           <h3 className="text-lg font-semibold">Lector de camara</h3>
-          <BarcodeScanner onScan={onScan} />
+          <BarcodeScanner onScan={onScan} compact />
           <p className="rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">{message}</p>
         </div>
 
@@ -145,13 +188,20 @@ function PosView() {
               </div>
             </div>
             <div className="mt-3 flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-amber-700">Facturacion deshabilitada por ahora.</p>
               <button
                 type="button"
                 onClick={clearCart}
                 className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold"
               >
                 Limpiar carrito
+              </button>
+              <button
+                type="button"
+                onClick={comprar}
+                disabled={loadingBuy}
+                className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+              >
+                {loadingBuy ? "Guardando..." : "Comprar"}
               </button>
             </div>
           </div>

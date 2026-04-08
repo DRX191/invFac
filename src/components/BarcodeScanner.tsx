@@ -4,11 +4,16 @@ import { Html5Qrcode } from "html5-qrcode";
 interface BarcodeScannerProps {
   onScan: (decodedText: string) => void;
   instanceId?: string;
+  compact?: boolean;
 }
 
 const DEFAULT_SCANNER_ID = "barcode-scanner-region";
 
-function BarcodeScanner({ onScan, instanceId = DEFAULT_SCANNER_ID }: BarcodeScannerProps) {
+function BarcodeScanner({
+  onScan,
+  instanceId = DEFAULT_SCANNER_ID,
+  compact = false
+}: BarcodeScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const lastScanRef = useRef<{ code: string; at: number }>({ code: "", at: 0 });
   const onScanRef = useRef(onScan);
@@ -31,7 +36,7 @@ function BarcodeScanner({ onScan, instanceId = DEFAULT_SCANNER_ID }: BarcodeScan
       try {
         await scanner.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: 220 },
+          { fps: 12, qrbox: compact ? 180 : 220 },
           (decodedText: string) => {
             const now = Date.now();
             if (
@@ -70,7 +75,14 @@ function BarcodeScanner({ onScan, instanceId = DEFAULT_SCANNER_ID }: BarcodeScan
     };
   }, [instanceId]);
 
-  return <div id={instanceId} className="min-h-[240px] w-full overflow-hidden rounded-2xl border border-slate-200 bg-black" />;
+  return (
+    <div
+      id={instanceId}
+      className={`w-full overflow-hidden rounded-2xl border border-slate-200 bg-black ${
+        compact ? "min-h-[180px]" : "min-h-[240px]"
+      }`}
+    />
+  );
 }
 
 export default BarcodeScanner;

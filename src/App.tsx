@@ -9,12 +9,16 @@ import LoginView from "./views/LoginView";
 import ResetPasswordView from "./views/ResetPasswordView";
 import { isSupabaseConfigured, supabaseConfigError } from "./lib/supabaseClient";
 import { supabase } from "./lib/supabaseClient";
+import cartIcon from "./img/cart.png";
+import inventoryIcon from "./img/inventory.png";
+import movementIcon from "./img/movement.png";
+import saleIcon from "./img/sale.png";
 
 const navItems = [
-  { to: "/pos", label: "POS" },
-  { to: "/admin/inventory", label: "Inventario" },
-  { to: "/admin/movimientos", label: "Movimientos" },
-  { to: "/admin/reports", label: "Reportes" }
+  { to: "/pos", label: "POS", icon: cartIcon },
+  { to: "/admin/inventory", label: "Inventario", icon: inventoryIcon },
+  { to: "/admin/movimientos", label: "Movimientos", icon: movementIcon },
+  { to: "/admin/reports", label: "Reportes", icon: saleIcon }
 ];
 
 function App() {
@@ -118,13 +122,14 @@ function App() {
               <Link
                 key={item.to}
                 to={item.to}
-                className={`rounded-xl px-2 py-2 text-center text-xs font-bold transition ${
+                aria-label={item.label}
+                className={`nav-icon-btn ${
                   active
-                    ? "bg-brand-700 text-white"
-                    : "border border-slate-300 bg-white text-slate-700"
+                    ? "active"
+                    : ""
                 }`}
               >
-                {item.label}
+                <img src={item.icon} alt={item.label} className="h-7 w-7 object-contain" />
               </Link>
             );
           })}
