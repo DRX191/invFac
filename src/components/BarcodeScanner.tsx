@@ -78,8 +78,8 @@ function BarcodeScanner({
   return (
     <div
       id={instanceId}
-      className={`w-full overflow-hidden rounded-2xl border border-slate-200 bg-black ${
-        compact ? "min-h-[180px]" : "min-h-[240px]"
+      className={`barcode-scanner w-full ${
+        compact ? "barcode-scanner--compact" : "barcode-scanner--regular"
       }`}
     />
   );
