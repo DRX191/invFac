@@ -7,14 +7,14 @@ import BarcodeScanner from "../components/BarcodeScanner";
 
 interface ProductForm {
   barcode: string;
-  descripcion: string;
+  description: string;
   precio: string;
   stockActual: string;
 }
 
 const defaultForm: ProductForm = {
   barcode: "",
-  descripcion: "",
+  description: "",
   precio: "",
   stockActual: ""
 };
@@ -23,13 +23,12 @@ function InventoryView() {
   const [rows, setRows] = useState<Product[]>([]);
   const [form, setForm] = useState<ProductForm>(defaultForm);
   const [message, setMessage] = useState("Cargando inventario...");
-  const [scannerOpen, setScannerOpen] = useState(false);
 
   const loadProducts = async () => {
     const { data, error } = await supabase
       .from("productos")
-      .select("id, barcode, descripcion, precio, stockActual, createdAt, updatedAt")
-      .order("descripcion", { ascending: true });
+      .select("id, barcode, description, precio, stockActual, createdAt, updatedAt")
+      .order("description", { ascending: true });
 
     if (error) {
       setMessage(`Error cargando productos: ${error.message}`);
@@ -47,7 +46,7 @@ function InventoryView() {
   const columns = useMemo<ColDef<Product>[]>(
     () => [
       { field: "barcode", headerName: "Codigo de barras", flex: 1.3 },
-      { field: "descripcion", headerName: "Descripcion", flex: 1.8 },
+      { field: "description", headerName: "Descripcion", flex: 1.8 },
       {
         field: "precio",
         headerName: "Precio",
@@ -87,12 +86,12 @@ function InventoryView() {
     e.preventDefault();
     const payload = {
       barcode: form.barcode.trim(),
-      descripcion: form.descripcion.trim(),
+      description: form.description.trim(),
       precio: Number(form.precio),
       stockActual: Number(form.stockActual)
     };
 
-    if (!payload.barcode || !payload.descripcion || payload.precio <= 0 || payload.stockActual < 0) {
+    if (!payload.barcode || !payload.description || payload.precio <= 0 || payload.stockActual < 0) {
       setMessage("Completa todos los campos con valores validos.");
       return;
     }
@@ -115,7 +114,6 @@ function InventoryView() {
 
     setForm((prev) => ({ ...prev, barcode: decodedText }));
     setMessage(`Codigo escaneado: ${decodedText}`);
-    setScannerOpen(false);
   };
 
   return (
@@ -126,23 +124,8 @@ function InventoryView() {
       </header>
 
       <div className="rounded-2xl bg-white p-4 shadow-sm">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Escanear codigo de barras</h3>
-          <button
-            type="button"
-            onClick={() => setScannerOpen((prev) => !prev)}
-            className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold"
-          >
-            {scannerOpen ? "Cerrar camara" : "Abrir camara"}
-          </button>
-        </div>
-        {scannerOpen ? (
-          <BarcodeScanner onScan={handleScanBarcode} />
-        ) : (
-          <p className="rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">
-            Abre la camara para escanear y autocompletar el barcode del producto.
-          </p>
-        )}
+        <h3 className="mb-3 text-lg font-semibold">Escanear codigo de barras</h3>
+        <BarcodeScanner onScan={handleScanBarcode} />
       </div>
 
       <form onSubmit={saveProduct} className="grid gap-3 rounded-2xl bg-white p-4 shadow-sm md:grid-cols-4">
@@ -153,8 +136,8 @@ function InventoryView() {
           className="rounded-xl border border-slate-300 px-3 py-3"
         />
         <input
-          value={form.descripcion}
-          onChange={(e) => setForm((prev) => ({ ...prev, descripcion: e.target.value }))}
+          value={form.description}
+          onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
           placeholder="Descripcion"
           className="rounded-xl border border-slate-300 px-3 py-3"
         />

@@ -1,7 +1,7 @@
 export interface Product {
   id: string;
   barcode: string;
-  descripcion: string;
+  description: string;
   precio: number;
   stockActual: number;
   createdAt: string;
@@ -51,7 +51,7 @@ export interface SaleDetail {
 export interface CartRow {
   productoId: string;
   barcode: string;
-  descripcion: string;
+  description: string;
   precioUnitario: number;
   cantidad: number;
   subtotal: number;

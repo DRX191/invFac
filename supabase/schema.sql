@@ -13,7 +13,7 @@ $$;
 create table if not exists public.productos (
   id uuid primary key default gen_random_uuid(),
   barcode text not null unique,
-  descripcion text not null,
+  description text not null,
   precio numeric(12,2) not null check (precio > 0),
   "stockActual" int not null default 0 check ("stockActual" >= 0),
   "createdAt" timestamptz not null default now(),
@@ -87,7 +87,7 @@ select
   v."usuarioId",
   vd.id as "ventaDetalleId",
   p.barcode,
-  p.descripcion,
+  p.description,
   vd.cantidad,
   vd."precioUnitario",
   vd.subtotal,

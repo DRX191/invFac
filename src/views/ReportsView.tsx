@@ -8,7 +8,7 @@ interface ReportRow {
   fechaVenta: string;
   usuarioId: string;
   barcode: string;
-  descripcion: string;
+  description: string;
   cantidad: number;
   precioUnitario: number;
   subtotal: number;
@@ -49,7 +49,7 @@ function ReportsView() {
       { field: "ventaId", headerName: "Venta", flex: 1.6 },
       { field: "usuarioId", headerName: "Usuario", flex: 1.6 },
       { field: "barcode", headerName: "Barcode", flex: 1.2 },
-      { field: "descripcion", headerName: "Producto", flex: 1.8 },
+      { field: "description", headerName: "Producto", flex: 1.8 },
       { field: "cantidad", headerName: "Cantidad", flex: 0.8 },
       {
         field: "precioUnitario",
@@ -78,7 +78,7 @@ function ReportsView() {
 
     const { data, error } = await supabase
       .from("vwVentasDetalle")
-      .select("ventaId, fechaVenta, usuarioId, barcode, descripcion, cantidad, precioUnitario, subtotal, totalVenta")
+      .select("ventaId, fechaVenta, usuarioId, barcode, description, cantidad, precioUnitario, subtotal, totalVenta")
       .gte("fechaVenta", fromDate)
       .order("fechaVenta", { ascending: false });
 

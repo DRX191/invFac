@@ -27,8 +27,8 @@ function MovimientosView() {
     const loadProducts = async () => {
       const { data, error } = await supabase
         .from("productos")
-        .select("id, barcode, descripcion, precio, stockActual, createdAt, updatedAt")
-        .order("descripcion", { ascending: true });
+        .select("id, barcode, description, precio, stockActual, createdAt, updatedAt")
+        .order("description", { ascending: true });
 
       if (error) {
         setMessage(`No se pudieron cargar productos: ${error.message}`);
@@ -44,7 +44,7 @@ function MovimientosView() {
   const columns = useMemo<ColDef<EntryRow>[]>(
     () => [
       { field: "barcode", headerName: "Codigo", flex: 1.1 },
-      { field: "descripcion", headerName: "Producto", flex: 1.8 },
+      { field: "description", headerName: "Producto", flex: 1.8 },
       { field: "cantidad", headerName: "Cantidad", flex: 0.8 },
       {
         field: "costoUnitario",
@@ -93,7 +93,7 @@ function MovimientosView() {
         {
           productoId: product.id,
           barcode: product.barcode,
-          descripcion: product.descripcion,
+          description: product.description,
           precioUnitario: Number(product.precio),
           cantidad: qty,
           costoUnitario: cost,
@@ -105,7 +105,7 @@ function MovimientosView() {
 
     setCantidad("1");
     setCostoUnitario("0");
-    setMessage(`Detalle agregado: ${product.descripcion}`);
+    setMessage(`Detalle agregado: ${product.description}`);
   };
 
   const guardarMovimiento = async () => {
@@ -165,7 +165,7 @@ function MovimientosView() {
           <option value="">Selecciona producto</option>
           {products.map((product) => (
             <option key={product.id} value={product.id}>
-              {product.descripcion} ({product.barcode})
+              {product.description} ({product.barcode})
             </option>
           ))}
         </select>

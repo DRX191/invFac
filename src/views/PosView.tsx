@@ -18,7 +18,7 @@ function PosView() {
   const columnDefs = useMemo<ColDef<CartRow>[]>(
     () => [
       { field: "barcode", headerName: "Codigo", flex: 1.1 },
-      { field: "descripcion", headerName: "Producto", flex: 1.6 },
+      { field: "description", headerName: "Producto", flex: 1.6 },
       {
         field: "precioUnitario",
         headerName: "Precio",
@@ -43,7 +43,7 @@ function PosView() {
 
     const { data, error } = await supabase
       .from("productos")
-      .select("id, barcode, descripcion, precio, stockActual")
+      .select("id, barcode, description, precio, stockActual")
       .eq("barcode", barcode)
       .maybeSingle<Product>();
 
@@ -58,7 +58,7 @@ function PosView() {
     }
 
     if (data.stockActual <= 0) {
-      setMessage(`Producto sin stock: ${data.descripcion}.`);
+      setMessage(`Producto sin stock: ${data.description}.`);
       return;
     }
 
@@ -82,7 +82,7 @@ function PosView() {
         {
           productoId: data.id,
           barcode: data.barcode,
-          descripcion: data.descripcion,
+          description: data.description,
           precioUnitario: Number(data.precio),
           cantidad: 1,
           subtotal: Number(data.precio)
@@ -91,7 +91,7 @@ function PosView() {
       ];
     });
 
-    setMessage(`Agregado: ${data.descripcion}`);
+    setMessage(`Agregado: ${data.description}`);
   }, []);
 
   const clearCart = () => {
