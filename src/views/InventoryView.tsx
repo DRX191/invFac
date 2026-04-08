@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "@ag-grid-community/react";
 import type { CellValueChangedEvent, ColDef } from "@ag-grid-community/core";
 import { supabase } from "../lib/supabaseClient";
@@ -107,14 +107,14 @@ function InventoryView() {
     await loadProducts();
   };
 
-  const handleScanBarcode = (decodedText: string) => {
+  const handleScanBarcode = useCallback((decodedText: string) => {
     if (!decodedText) {
       return;
     }
 
     setForm((prev) => ({ ...prev, barcode: decodedText }));
     setMessage(`Codigo escaneado: ${decodedText}`);
-  };
+  }, []);
 
   return (
     <section className="space-y-4">
@@ -125,7 +125,7 @@ function InventoryView() {
 
       <div className="rounded-2xl bg-white p-4 shadow-sm">
         <h3 className="mb-3 text-lg font-semibold">Escanear codigo de barras</h3>
-        <BarcodeScanner onScan={handleScanBarcode} />
+        <BarcodeScanner onScan={handleScanBarcode} instanceId="inventory-barcode-scanner" />
       </div>
 
       <form onSubmit={saveProduct} className="grid gap-3 rounded-2xl bg-white p-4 shadow-sm md:grid-cols-4">
