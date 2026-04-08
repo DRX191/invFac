@@ -3,6 +3,7 @@ import { AgGridReact } from "@ag-grid-community/react";
 import type { CellValueChangedEvent, ColDef } from "@ag-grid-community/core";
 import { supabase } from "../lib/supabaseClient";
 import type { Product } from "../types/models";
+import BarcodeScanner from "../components/BarcodeScanner";
 
 interface ProductForm {
   barcode: string;
@@ -22,6 +23,7 @@ function InventoryView() {
   const [rows, setRows] = useState<Product[]>([]);
   const [form, setForm] = useState<ProductForm>(defaultForm);
   const [message, setMessage] = useState("Cargando inventario...");
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   const loadProducts = async () => {
     const { data, error } = await supabase
@@ -106,12 +108,42 @@ function InventoryView() {
     await loadProducts();
   };
 
+  const handleScanBarcode = (decodedText: string) => {
+    if (!decodedText) {
+      return;
+    }
+
+    setForm((prev) => ({ ...prev, barcode: decodedText }));
+    setMessage(`Codigo escaneado: ${decodedText}`);
+    setScannerOpen(false);
+  };
+
   return (
     <section className="space-y-4">
       <header>
         <h2 className="text-2xl font-bold">Inventario</h2>
         <p className="text-sm text-slate-600">Gestion de productos con codigo de barras unico.</p>
       </header>
+
+      <div className="rounded-2xl bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Escanear codigo de barras</h3>
+          <button
+            type="button"
+            onClick={() => setScannerOpen((prev) => !prev)}
+            className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold"
+          >
+            {scannerOpen ? "Cerrar camara" : "Abrir camara"}
+          </button>
+        </div>
+        {scannerOpen ? (
+          <BarcodeScanner onScan={handleScanBarcode} />
+        ) : (
+          <p className="rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">
+            Abre la camara para escanear y autocompletar el barcode del producto.
+          </p>
+        )}
+      </div>
 
       <form onSubmit={saveProduct} className="grid gap-3 rounded-2xl bg-white p-4 shadow-sm md:grid-cols-4">
         <input

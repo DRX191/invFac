@@ -3,6 +3,7 @@ import PosView from "./views/PosView";
 import InventoryView from "./views/InventoryView";
 import MovimientosView from "./views/MovimientosView";
 import ReportsView from "./views/ReportsView";
+import { isSupabaseConfigured, supabaseConfigError } from "./lib/supabaseClient";
 
 const navItems = [
   { to: "/pos", label: "POS" },
@@ -39,6 +40,12 @@ function App() {
       </header>
 
       <main className="mx-auto max-w-7xl px-3 py-4 sm:px-6 sm:py-6">
+        {!isSupabaseConfigured ? (
+          <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+            {supabaseConfigError}
+          </div>
+        ) : null}
+
         <Routes>
           <Route path="/" element={<Navigate to="/pos" replace />} />
           <Route path="/pos" element={<PosView />} />
