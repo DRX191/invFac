@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "@ag-grid-community/react";
-import type { CellValueChangedEvent, ColDef } from "@ag-grid-community/core";
+import type { ColDef } from "@ag-grid-community/core";
 import { supabase } from "../lib/supabaseClient";
 import type { Product } from "../types/models";
 import BarcodeScanner from "../components/BarcodeScanner";
@@ -27,6 +27,7 @@ function InventoryView() {
   const [message, setMessage] = useState("Cargando inventario...");
   const [mode, setMode] = useState<InventoryMode | null>(null);
   const [showModeModal, setShowModeModal] = useState(true);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
 
   const loadProducts = async () => {
     const { data, error } = await supabase
@@ -47,27 +48,6 @@ function InventoryView() {
     void loadProducts();
   }, []);
 
-  const columns = useMemo<ColDef<Product>[]>(
-    () => [
-      { field: "barcode", headerName: "Codigo de barras", flex: 1.3 },
-      { field: "description", headerName: "Descripcion", flex: 1.8 },
-      {
-        field: "precio",
-        headerName: "Precio",
-        editable: true,
-        flex: 1,
-        valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
-      },
-      {
-        field: "stockActual",
-        headerName: "Stock",
-        editable: true,
-        flex: 0.8
-      }
-    ],
-    []
-  );
-
   const catalogColumns = useMemo<ColDef<Product>[]>(
     () => [
       { field: "barcode", headerName: "Codigo de barras", flex: 1.3 },
@@ -83,24 +63,6 @@ function InventoryView() {
     []
   );
 
-  const onCellValueChanged = async (event: CellValueChangedEvent<Product>) => {
-    const id = event.data.id;
-    const payload = {
-      precio: Number(event.data.precio),
-      stockActual: Number(event.data.stockActual)
-    };
-
-    const { error } = await supabase.from("productos").update(payload).eq("id", id);
-
-    if (error) {
-      setMessage(`No se pudo guardar la edicion: ${error.message}`);
-      await loadProducts();
-      return;
-    }
-
-    setMessage("Producto actualizado correctamente.");
-  };
-
   const saveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
@@ -115,24 +77,70 @@ function InventoryView() {
       return;
     }
 
-    const { error } = await supabase.from("productos").insert(payload);
-    if (error) {
-      setMessage(`Error al crear producto: ${error.message}`);
-      return;
+    if (editingProductId) {
+      const { error } = await supabase
+        .from("productos")
+        .update(payload)
+        .eq("id", editingProductId);
+      if (error) {
+        setMessage(`Error al actualizar producto: ${error.message}`);
+        return;
+      }
+
+      setMessage("Producto actualizado correctamente.");
+    } else {
+      const { error } = await supabase.from("productos").insert(payload);
+      if (error) {
+        setMessage(`Error al crear producto: ${error.message}`);
+        return;
+      }
+
+      setMessage("Producto creado correctamente.");
     }
 
     setForm(defaultForm);
-    setMessage("Producto creado correctamente.");
+    setEditingProductId(null);
     await loadProducts();
   };
 
-  const handleScanBarcode = useCallback((decodedText: string) => {
+  const handleScanBarcode = useCallback(async (decodedText: string) => {
     if (!decodedText) {
       return;
     }
 
-    setForm((prev) => ({ ...prev, barcode: decodedText }));
-    setMessage(`Codigo escaneado: ${decodedText}`);
+    const barcode = decodedText.trim();
+    const { data, error } = await supabase
+      .from("productos")
+      .select("id, barcode, description, precio, stockActual")
+      .eq("barcode", barcode)
+      .maybeSingle<Product>();
+
+    if (error) {
+      setMessage(`Error buscando barcode: ${error.message}`);
+      return;
+    }
+
+    if (data) {
+      setForm({
+        barcode: data.barcode,
+        description: data.description,
+        precio: String(data.precio),
+        stockActual: String(data.stockActual)
+      });
+      setEditingProductId(data.id);
+      setMessage(`Producto existente detectado. Editando: ${data.description}`);
+      return;
+    }
+
+    setEditingProductId(null);
+    setForm((prev) => ({
+      ...prev,
+      barcode,
+      description: "",
+      precio: "",
+      stockActual: ""
+    }));
+    setMessage(`Codigo nuevo detectado: ${barcode}. Completa datos para crear.`);
   }, []);
 
   const handleSelectMode = (nextMode: InventoryMode) => {
@@ -192,22 +200,22 @@ function InventoryView() {
               type="submit"
               className="rounded-xl bg-brand-700 px-5 py-3 text-base font-bold text-white md:col-span-4"
             >
-              Crear producto
+              {editingProductId ? "Guardar cambios" : "Crear producto"}
             </button>
+            {editingProductId ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingProductId(null);
+                  setForm(defaultForm);
+                  setMessage("Modo creacion activado.");
+                }}
+                className="rounded-xl border border-slate-300 px-5 py-3 text-base font-semibold md:col-span-4"
+              >
+                Cancelar edicion
+              </button>
+            ) : null}
           </form>
-
-          <div className="panel">
-            <p className="grid-title">Edicion rapida de productos (AG Grid)</p>
-            <div className="ag-theme-quartz h-[36dvh] min-h-[240px] w-full">
-              <AgGridReact<Product>
-                rowData={rows}
-                columnDefs={columns}
-                rowHeight={50}
-                overlayNoRowsTemplate="No hay productos registrados aun."
-                onCellValueChanged={onCellValueChanged}
-              />
-            </div>
-          </div>
         </>
       );
     }
@@ -242,10 +250,12 @@ function InventoryView() {
 
   return (
     <section className="space-y-3">
-      <header>
-        <h2 className="text-2xl font-bold">Inventario</h2>
-        <p className="text-sm text-slate-600">Gestion de productos con codigo de barras unico.</p>
-      </header>
+      {!showModeModal ? (
+        <header>
+          <h2 className="text-2xl font-bold">Inventario</h2>
+          <p className="text-sm text-slate-600">Gestion de productos con codigo de barras unico.</p>
+        </header>
+      ) : null}
 
       {showModeModal ? (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/45 px-4">

@@ -4,8 +4,6 @@ import type { ColDef } from "@ag-grid-community/core";
 import { supabase } from "../lib/supabaseClient";
 
 interface ReportRow {
-  ventaId: string;
-  ventaNumero: string;
   fechaVenta: string;
   usuarioEmail: string;
   description: string;
@@ -43,7 +41,6 @@ function ReportsView() {
 
   const columns = useMemo<ColDef<ReportRow>[]>(
     () => [
-      { field: "ventaNumero", headerName: "Venta", flex: 1.1 },
       { field: "fechaVenta", headerName: "Fecha", flex: 1.1 },
       { field: "usuarioEmail", headerName: "Usuario", flex: 1.6 },
       { field: "description", headerName: "Producto", flex: 1.8 },
@@ -72,22 +69,13 @@ function ReportsView() {
       return;
     }
 
-    const mapNumero = new Map<string, string>();
-    let counter = 1;
     const formattedRows: ReportRow[] = (data ?? []).map((row: any) => {
-      if (!mapNumero.has(row.ventaId)) {
-        mapNumero.set(row.ventaId, `F-${String(counter).padStart(6, "0")}`);
-        counter += 1;
-      }
-
       const rawDate = new Date(row.fechaVenta);
       const day = String(rawDate.getDate()).padStart(2, "0");
       const month = String(rawDate.getMonth() + 1).padStart(2, "0");
       const year = rawDate.getFullYear();
 
       return {
-        ventaId: row.ventaId,
-        ventaNumero: mapNumero.get(row.ventaId) ?? "",
         fechaVenta: `${day}-${month}-${year}`,
         usuarioEmail: row.usuarioEmail || row.usuarioId,
         description: row.description,
