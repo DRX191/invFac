@@ -1,5 +1,17 @@
 import { useEffect, useRef } from "react";
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
+ 
+declare global {
+  interface Window {
+    Quagga?: {
+      init: (config: unknown, cb: (err?: Error) => void) => void;
+      start: () => void;
+      stop: () => void;
+      onDetected: (cb: (result: any) => void) => void;
+      offDetected: (cb: (result: any) => void) => void;
+    };
+    __quaggaLoader?: Promise<void>;
+  }
+}
 
 interface BarcodeScannerProps {
   onScan: (decodedText: string) => void;
@@ -8,27 +20,37 @@ interface BarcodeScannerProps {
 }
 
 const DEFAULT_SCANNER_ID = "barcode-scanner-region";
-const SUPPORTED_BARCODE_FORMATS = [
-  Html5QrcodeSupportedFormats.CODE_128,
-  Html5QrcodeSupportedFormats.CODE_39,
-  Html5QrcodeSupportedFormats.CODE_93,
-  Html5QrcodeSupportedFormats.EAN_13,
-  Html5QrcodeSupportedFormats.EAN_8,
-  Html5QrcodeSupportedFormats.UPC_A,
-  Html5QrcodeSupportedFormats.UPC_E,
-  Html5QrcodeSupportedFormats.ITF,
-  Html5QrcodeSupportedFormats.CODABAR
-];
+
+function loadQuaggaFromCdn(): Promise<void> {
+  if (window.Quagga) {
+    return Promise.resolve();
+  }
+
+  if (window.__quaggaLoader) {
+    return window.__quaggaLoader;
+  }
+
+  window.__quaggaLoader = new Promise<void>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.2/dist/quagga.min.js";
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("No se pudo cargar Quagga2 desde CDN."));
+    document.head.appendChild(script);
+  });
+
+  return window.__quaggaLoader;
+}
 
 function BarcodeScanner({
   onScan,
   instanceId = DEFAULT_SCANNER_ID,
   compact = false
 }: BarcodeScannerProps) {
-  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const lastScanRef = useRef<{ code: string; at: number }>({ code: "", at: 0 });
   const onScanRef = useRef(onScan);
-  const isStartingRef = useRef(false);
+  const onDetectedRef = useRef<((result: any) => void) | null>(null);
 
   useEffect(() => {
     onScanRef.current = onScan;
@@ -36,27 +58,72 @@ function BarcodeScanner({
 
   useEffect(() => {
     let mounted = true;
-    const scanner = new Html5Qrcode(instanceId);
-    scannerRef.current = scanner;
 
     const startScanner = async () => {
-      if (isStartingRef.current) {
+      if (!containerRef.current) {
         return;
       }
-      isStartingRef.current = true;
+
       try {
-        await scanner.start(
-          { facingMode: "environment" },
-          {
-            // Full-frame scan is more tolerant to vertical/horizontal barcode orientation.
-            fps: 12,
-            disableFlip: false,
-            formatsToSupport: SUPPORTED_BARCODE_FORMATS,
-            experimentalFeatures: {
-              useBarCodeDetectorIfSupported: true
+        await loadQuaggaFromCdn();
+        if (!mounted || !window.Quagga || !containerRef.current) {
+          return;
+        }
+
+        await new Promise<void>((resolve, reject) => {
+          window.Quagga?.init(
+            {
+              inputStream: {
+                name: "Live",
+                type: "LiveStream",
+                target: containerRef.current,
+                constraints: {
+                  facingMode: "environment"
+                }
+              },
+              locator: {
+                patchSize: compact ? "small" : "medium",
+                halfSample: true
+              },
+              locate: true,
+              frequency: 12,
+              numOfWorkers: 2,
+              decoder: {
+                readers: [
+                  "code_128_reader",
+                  "ean_reader",
+                  "ean_8_reader",
+                  "upc_reader",
+                  "upc_e_reader",
+                  "code_39_reader",
+                  "code_93_reader",
+                  "codabar_reader",
+                  "i2of5_reader"
+                ]
+              }
+            },
+            (err?: Error) => {
+              if (err) {
+                reject(err);
+                return;
+              }
+              resolve();
             }
-          },
-          (decodedText: string) => {
+          );
+        });
+
+        if (!mounted || !window.Quagga) {
+          return;
+        }
+
+        window.Quagga.start();
+
+        const onDetected = (result: any) => {
+          const decodedText = result?.codeResult?.code;
+          if (!decodedText) {
+            return;
+          }
+
             const now = Date.now();
             if (
               decodedText === lastScanRef.current.code &&
@@ -65,18 +132,15 @@ function BarcodeScanner({
               return;
             }
             lastScanRef.current = { code: decodedText, at: now };
-            onScanRef.current(decodedText.trim());
-          },
-          () => {
-            // Ignore per-frame scan errors while camera is active.
-          }
-        );
+            onScanRef.current(String(decodedText).trim());
+        };
+
+        onDetectedRef.current = onDetected;
+        window.Quagga.onDetected(onDetected);
       } catch (error) {
         if (mounted) {
           console.error("Scanner start error", error);
         }
-      } finally {
-        isStartingRef.current = false;
       }
     };
 
@@ -84,19 +148,22 @@ function BarcodeScanner({
 
     return () => {
       mounted = false;
-      const activeScanner = scannerRef.current;
-      scannerRef.current = null;
-      if (activeScanner?.isScanning) {
-        void activeScanner.stop().then(() => activeScanner.clear());
-      } else {
-        void activeScanner?.clear();
+      if (window.Quagga && onDetectedRef.current) {
+        window.Quagga.offDetected(onDetectedRef.current);
+      }
+      if (window.Quagga) {
+        window.Quagga.stop();
+      }
+      if (containerRef.current) {
+        containerRef.current.innerHTML = "";
       }
     };
-  }, [instanceId]);
+  }, [compact]);
 
   return (
     <div
       id={instanceId}
+      ref={containerRef}
       className={`barcode-scanner w-full ${
         compact ? "barcode-scanner--compact" : "barcode-scanner--regular"
       }`}

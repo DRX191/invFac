@@ -93,11 +93,22 @@ body {
   width: 100% !important;
 }
 
+.barcode-scanner video {
+  object-fit: cover;
+  border-radius: 0.75rem;
+}
+
 .barcode-scanner > div {
   border: 0 !important;
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
+}
+
+/* Hide Quagga debug overlay so only camera stream + detection zone are visible. */
+.barcode-scanner canvas.drawing,
+.barcode-scanner canvas[width][height] {
+  display: none !important;
 }
 
 .barcode-scanner video {
