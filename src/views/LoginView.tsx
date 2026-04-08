@@ -1,11 +1,25 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+
+const REMEMBER_USER_KEY = "invfac.rememberUser";
+const REMEMBERED_EMAIL_KEY = "invfac.rememberedEmail";
 
 function LoginView() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberUser, setRememberUser] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("Ingresa con tu usuario para usar el sistema.");
+
+  useEffect(() => {
+    const remember = window.localStorage.getItem(REMEMBER_USER_KEY) === "true";
+    const rememberedEmail = window.localStorage.getItem(REMEMBERED_EMAIL_KEY) || "";
+
+    setRememberUser(remember);
+    if (remember && rememberedEmail) {
+      setEmail(rememberedEmail);
+    }
+  }, []);
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
@@ -44,6 +58,14 @@ function LoginView() {
       return;
     }
 
+    if (rememberUser) {
+      window.localStorage.setItem(REMEMBER_USER_KEY, "true");
+      window.localStorage.setItem(REMEMBERED_EMAIL_KEY, email.trim());
+    } else {
+      window.localStorage.setItem(REMEMBER_USER_KEY, "false");
+      window.localStorage.removeItem(REMEMBERED_EMAIL_KEY);
+    }
+
     setLoading(false);
     setMessage("Sesion iniciada correctamente.");
   };
@@ -69,6 +91,15 @@ function LoginView() {
             placeholder="Contrasena"
             className="w-full rounded-xl border border-slate-300 px-3 py-3"
           />
+          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+            <input
+              type="checkbox"
+              checked={rememberUser}
+              onChange={(e) => setRememberUser(e.target.checked)}
+              className="h-4 w-4"
+            />
+            <span className="text-sm font-semibold text-slate-700">Recordar usuario</span>
+          </label>
           <button
             type="submit"
             disabled={loading}

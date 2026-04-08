@@ -12,6 +12,8 @@ interface ProductForm {
   stockActual: string;
 }
 
+type InventoryMode = "manage" | "catalog";
+
 const defaultForm: ProductForm = {
   barcode: "",
   description: "",
@@ -23,6 +25,7 @@ function InventoryView() {
   const [rows, setRows] = useState<Product[]>([]);
   const [form, setForm] = useState<ProductForm>(defaultForm);
   const [message, setMessage] = useState("Cargando inventario...");
+  const [mode, setMode] = useState<InventoryMode>("manage");
 
   const loadProducts = async () => {
     const { data, error } = await supabase
@@ -60,6 +63,21 @@ function InventoryView() {
         editable: true,
         flex: 0.8
       }
+    ],
+    []
+  );
+
+  const catalogColumns = useMemo<ColDef<Product>[]>(
+    () => [
+      { field: "barcode", headerName: "Codigo de barras", flex: 1.3 },
+      { field: "description", headerName: "Descripcion", flex: 2 },
+      {
+        field: "precio",
+        headerName: "Precio",
+        flex: 1,
+        valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
+      },
+      { field: "stockActual", headerName: "Stock", flex: 0.8 }
     ],
     []
   );
@@ -124,60 +142,96 @@ function InventoryView() {
       </header>
 
       <div className="panel">
-        <h3 className="mb-3 text-lg font-semibold">Escanear codigo de barras</h3>
-        <BarcodeScanner onScan={handleScanBarcode} instanceId="inventory-barcode-scanner" />
-      </div>
-
-      <form onSubmit={saveProduct} className="panel grid gap-3 md:grid-cols-4">
-        <input
-          value={form.barcode}
-          onChange={(e) => setForm((prev) => ({ ...prev, barcode: e.target.value }))}
-          placeholder="Codigo de barras"
-          className="rounded-xl border border-slate-300 px-3 py-3"
-        />
-        <input
-          value={form.description}
-          onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-          placeholder="Descripcion"
-          className="rounded-xl border border-slate-300 px-3 py-3"
-        />
-        <input
-          value={form.precio}
-          onChange={(e) => setForm((prev) => ({ ...prev, precio: e.target.value }))}
-          placeholder="Precio"
-          type="number"
-          min="0"
-          step="0.01"
-          className="rounded-xl border border-slate-300 px-3 py-3"
-        />
-        <input
-          value={form.stockActual}
-          onChange={(e) => setForm((prev) => ({ ...prev, stockActual: e.target.value }))}
-          placeholder="Stock inicial"
-          type="number"
-          min="0"
-          className="rounded-xl border border-slate-300 px-3 py-3"
-        />
-        <button
-          type="submit"
-          className="rounded-xl bg-brand-700 px-5 py-3 text-base font-bold text-white md:col-span-4"
-        >
-          Crear producto
-        </button>
-      </form>
-
-      <div className="panel">
-        <p className="grid-title">Productos disponibles (AG Grid)</p>
-        <div className="ag-theme-quartz h-[36dvh] min-h-[240px] w-full">
-          <AgGridReact<Product>
-            rowData={rows}
-            columnDefs={columns}
-            rowHeight={50}
-            overlayNoRowsTemplate="No hay productos registrados aun."
-            onCellValueChanged={onCellValueChanged}
-          />
+        <p className="mb-2 text-sm font-semibold text-slate-600">Modulo de inventario</p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setMode("manage")}
+            className={`module-tab ${mode === "manage" ? "active" : ""}`}
+          >
+            Agregar / Editar productos
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("catalog")}
+            className={`module-tab ${mode === "catalog" ? "active" : ""}`}
+          >
+            Visualizar productos existentes
+          </button>
         </div>
       </div>
+
+      {mode === "manage" ? (
+        <>
+          <div className="panel">
+            <h3 className="mb-3 text-lg font-semibold">Escanear codigo de barras</h3>
+            <BarcodeScanner onScan={handleScanBarcode} instanceId="inventory-barcode-scanner" />
+          </div>
+
+          <form onSubmit={saveProduct} className="panel grid gap-3 md:grid-cols-4">
+            <input
+              value={form.barcode}
+              onChange={(e) => setForm((prev) => ({ ...prev, barcode: e.target.value }))}
+              placeholder="Codigo de barras"
+              className="rounded-xl border border-slate-300 px-3 py-3"
+            />
+            <input
+              value={form.description}
+              onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+              placeholder="Descripcion"
+              className="rounded-xl border border-slate-300 px-3 py-3"
+            />
+            <input
+              value={form.precio}
+              onChange={(e) => setForm((prev) => ({ ...prev, precio: e.target.value }))}
+              placeholder="Precio"
+              type="number"
+              min="0"
+              step="0.01"
+              className="rounded-xl border border-slate-300 px-3 py-3"
+            />
+            <input
+              value={form.stockActual}
+              onChange={(e) => setForm((prev) => ({ ...prev, stockActual: e.target.value }))}
+              placeholder="Stock inicial"
+              type="number"
+              min="0"
+              className="rounded-xl border border-slate-300 px-3 py-3"
+            />
+            <button
+              type="submit"
+              className="rounded-xl bg-brand-700 px-5 py-3 text-base font-bold text-white md:col-span-4"
+            >
+              Crear producto
+            </button>
+          </form>
+
+          <div className="panel">
+            <p className="grid-title">Edicion rapida de productos (AG Grid)</p>
+            <div className="ag-theme-quartz h-[36dvh] min-h-[240px] w-full">
+              <AgGridReact<Product>
+                rowData={rows}
+                columnDefs={columns}
+                rowHeight={50}
+                overlayNoRowsTemplate="No hay productos registrados aun."
+                onCellValueChanged={onCellValueChanged}
+              />
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="panel">
+          <p className="grid-title">Catalogo de productos existentes (AG Grid)</p>
+          <div className="ag-theme-quartz h-[54dvh] min-h-[300px] w-full">
+            <AgGridReact<Product>
+              rowData={rows}
+              columnDefs={catalogColumns}
+              rowHeight={50}
+              overlayNoRowsTemplate="No hay productos registrados aun."
+            />
+          </div>
+        </div>
+      )}
 
       <p className="rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">{message}</p>
     </section>

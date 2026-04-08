@@ -8,28 +8,35 @@ import type { CartRow, Product } from "../types/models";
 function PosView() {
   const [cart, setCart] = useState<CartRow[]>([]);
   const [message, setMessage] = useState<string>("Escanea un producto para iniciar la venta.");
-  const [loadingCharge, setLoadingCharge] = useState(false);
 
   const totalVenta = useMemo(
     () => cart.reduce((acc, row) => acc + row.subtotal, 0),
     [cart]
   );
 
+  const totalItems = useMemo(
+    () => cart.reduce((acc, row) => acc + row.cantidad, 0),
+    [cart]
+  );
+
   const columnDefs = useMemo<ColDef<CartRow>[]>(
     () => [
-      { field: "barcode", headerName: "Codigo", flex: 1.1 },
-      { field: "description", headerName: "Producto", flex: 1.6 },
       {
-        field: "precioUnitario",
-        headerName: "Precio",
-        flex: 0.9,
-        valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
+        field: "description",
+        headerName: "Producto",
+        flex: 2,
+        valueGetter: (p) => {
+          const row = p.data;
+          if (!row) {
+            return "";
+          }
+          return row.cantidad > 1 ? `${row.description} x${row.cantidad}` : row.description;
+        }
       },
-      { field: "cantidad", headerName: "Cant.", flex: 0.7 },
       {
         field: "subtotal",
-        headerName: "Subtotal",
-        flex: 0.9,
+        headerName: "Precio",
+        flex: 1,
         valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
       }
     ],
@@ -99,49 +106,6 @@ function PosView() {
     setMessage("Carrito limpio.");
   };
 
-  const cobrar = async () => {
-    if (!cart.length) {
-      setMessage("No hay productos en el carrito.");
-      return;
-    }
-
-    setLoadingCharge(true);
-    try {
-      const {
-        data: { user },
-        error: userError
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        setMessage("No hay sesion activa. Inicia sesion para cobrar.");
-        return;
-      }
-
-      const payload = {
-        p_usuario_id: user.id,
-        p_total_venta: Number(totalVenta.toFixed(2)),
-        p_detalles: cart.map((item) => ({
-          productoId: item.productoId,
-          cantidad: item.cantidad,
-          precioUnitario: item.precioUnitario,
-          subtotal: Number(item.subtotal.toFixed(2))
-        }))
-      };
-
-      const { error } = await supabase.rpc("registrar_venta_con_detalles", payload);
-
-      if (error) {
-        setMessage(`Error al cobrar: ${error.message}`);
-        return;
-      }
-
-      setCart([]);
-      setMessage("Venta registrada correctamente.");
-    } finally {
-      setLoadingCharge(false);
-    }
-  };
-
   return (
     <section className="space-y-3">
       <header>
@@ -168,23 +132,26 @@ function PosView() {
             />
           </div>
 
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xl font-bold">Total: ${totalVenta.toFixed(2)}</p>
-            <div className="flex gap-2">
+          <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Resumen de compra</p>
+            <div className="mt-1 flex items-end justify-between">
+              <div>
+                <p className="text-sm text-slate-600">Productos agregados</p>
+                <p className="text-lg font-bold text-slate-900">{totalItems}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-slate-600">Total actual</p>
+                <p className="text-2xl font-extrabold text-slate-900">${totalVenta.toFixed(2)}</p>
+              </div>
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-amber-700">Facturacion deshabilitada por ahora.</p>
               <button
                 type="button"
                 onClick={clearCart}
-                className="rounded-xl border border-slate-300 px-5 py-3 text-base font-semibold"
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold"
               >
-                Limpiar
-              </button>
-              <button
-                type="button"
-                onClick={cobrar}
-                disabled={loadingCharge}
-                className="rounded-xl bg-emerald-600 px-6 py-3 text-base font-bold text-white disabled:opacity-60"
-              >
-                {loadingCharge ? "Procesando..." : "Cobrar"}
+                Limpiar carrito
               </button>
             </div>
           </div>

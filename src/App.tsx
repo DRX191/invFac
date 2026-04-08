@@ -84,30 +84,11 @@ function App() {
     <div className="mobile-shell bg-slate-100 text-slate-900">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="phone-container px-3 py-3 sm:px-6">
-          <div className="mb-2 flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <h1 className="mr-auto text-xl font-bold text-brand-900">InvFac POS</h1>
             <span className="hidden rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600 sm:inline-block">
             {session.user.email}
             </span>
-          </div>
-
-          <div className="flex items-center gap-2 overflow-x-auto pb-1">
-            {navItems.map((item) => {
-              const active = location.pathname === item.to;
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={`whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
-                    active
-                      ? "bg-brand-700 text-white"
-                      : "border border-slate-300 bg-white text-slate-700 hover:border-brand-600 hover:text-brand-700"
-                  }`}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
             <button
               type="button"
               onClick={handleSignOut}
@@ -119,7 +100,7 @@ function App() {
         </div>
       </header>
 
-      <main className="phone-container px-3 py-3 sm:px-6 sm:py-5">
+      <main className="phone-container px-3 py-3 pb-28 sm:px-6 sm:py-5">
         <Routes>
           <Route path="/" element={<Navigate to="/pos" replace />} />
           <Route path="/pos" element={<PosView />} />
@@ -128,6 +109,27 @@ function App() {
           <Route path="/admin/reports" element={<ReportsView />} />
         </Routes>
       </main>
+
+      <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur">
+        <div className="phone-container grid grid-cols-4 gap-2 px-3 pb-1">
+          {navItems.map((item) => {
+            const active = location.pathname === item.to;
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`rounded-xl px-2 py-2 text-center text-xs font-bold transition ${
+                  active
+                    ? "bg-brand-700 text-white"
+                    : "border border-slate-300 bg-white text-slate-700"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }
