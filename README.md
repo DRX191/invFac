@@ -62,6 +62,13 @@ Las variables de servidor aparecen comentadas en [.env.example](.env.example) so
 - /admin/movimientos: registro de compras de entrada (resumen/detalle).
 - /admin/reports: ventas detalle por dia, semana, mes o anio.
 
+## 5.1) UI Mobile-first
+
+- El layout esta optimizado para telefono usando `dvh`.
+- Viewport objetivo de referencia: Galaxy A06 (aprox. 412x915 CSS px).
+- Todas las pantallas principales muestran AG Grid de forma visible con alturas adaptadas a movil.
+- Si no hay datos, AG Grid muestra mensajes de estado (no rows) para evitar paneles vacios sin contexto.
+
 ## 6) Notas de seguridad
 
 - Se habilita RLS para tablas principales.

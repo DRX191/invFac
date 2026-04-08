@@ -7,6 +7,7 @@
 
 :root {
   font-family: "Segoe UI", "Tahoma", sans-serif;
+  --phone-width: 412px;
 }
 
 body {
@@ -14,15 +15,53 @@ body {
   background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
 }
 
+#root {
+  min-height: 100dvh;
+}
+
 .ag-theme-quartz {
   --ag-row-height: 50px;
   --ag-header-height: 50px;
   --ag-border-color: #cbd5e1;
+  --ag-header-foreground-color: #0f172a;
+  --ag-header-background-color: #e2e8f0;
   --ag-font-size: 15px;
+}
+
+.mobile-shell {
+  min-height: 100dvh;
+}
+
+.phone-container {
+  width: 100%;
+  max-width: var(--phone-width);
+  margin-inline: auto;
+}
+
+.panel {
+  border-radius: 1rem;
+  background: white;
+  padding: 0.85rem;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
+}
+
+.grid-title {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #334155;
 }
 
 @media (max-width: 640px) {
   .ag-theme-quartz {
     --ag-font-size: 14px;
+    --ag-row-height: 48px;
+    --ag-header-height: 44px;
+  }
+}
+
+@media (min-width: 768px) {
+  .phone-container {
+    max-width: 1200px;
   }
 }

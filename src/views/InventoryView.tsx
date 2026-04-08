@@ -117,18 +117,18 @@ function InventoryView() {
   }, []);
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-3">
       <header>
         <h2 className="text-2xl font-bold">Inventario</h2>
         <p className="text-sm text-slate-600">Gestion de productos con codigo de barras unico.</p>
       </header>
 
-      <div className="rounded-2xl bg-white p-4 shadow-sm">
+      <div className="panel">
         <h3 className="mb-3 text-lg font-semibold">Escanear codigo de barras</h3>
         <BarcodeScanner onScan={handleScanBarcode} instanceId="inventory-barcode-scanner" />
       </div>
 
-      <form onSubmit={saveProduct} className="grid gap-3 rounded-2xl bg-white p-4 shadow-sm md:grid-cols-4">
+      <form onSubmit={saveProduct} className="panel grid gap-3 md:grid-cols-4">
         <input
           value={form.barcode}
           onChange={(e) => setForm((prev) => ({ ...prev, barcode: e.target.value }))}
@@ -166,12 +166,14 @@ function InventoryView() {
         </button>
       </form>
 
-      <div className="rounded-2xl bg-white p-4 shadow-sm">
-        <div className="ag-theme-quartz h-[460px] w-full">
+      <div className="panel">
+        <p className="grid-title">Productos disponibles (AG Grid)</p>
+        <div className="ag-theme-quartz h-[36dvh] min-h-[240px] w-full">
           <AgGridReact<Product>
             rowData={rows}
             columnDefs={columns}
             rowHeight={50}
+            overlayNoRowsTemplate="No hay productos registrados aun."
             onCellValueChanged={onCellValueChanged}
           />
         </div>

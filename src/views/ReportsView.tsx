@@ -96,13 +96,13 @@ function ReportsView() {
   }, [period]);
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-3">
       <header>
         <h2 className="text-2xl font-bold">Reporte de Ventas Detalle</h2>
         <p className="text-sm text-slate-600">Visualiza ventas por dia, semana, mes o anio.</p>
       </header>
 
-      <div className="flex flex-wrap gap-2 rounded-2xl bg-white p-4 shadow-sm">
+      <div className="panel flex flex-wrap gap-2">
         {periodOptions.map((item) => (
           <button
             key={item}
@@ -119,9 +119,15 @@ function ReportsView() {
         ))}
       </div>
 
-      <div className="rounded-2xl bg-white p-4 shadow-sm">
-        <div className="ag-theme-quartz h-[520px] w-full">
-          <AgGridReact<ReportRow> rowData={rows} columnDefs={columns} rowHeight={50} />
+      <div className="panel">
+        <p className="grid-title">Ventas detalladas (AG Grid)</p>
+        <div className="ag-theme-quartz h-[52dvh] min-h-[280px] w-full">
+          <AgGridReact<ReportRow>
+            rowData={rows}
+            columnDefs={columns}
+            rowHeight={50}
+            overlayNoRowsTemplate="No hay ventas en el periodo seleccionado."
+          />
         </div>
       </div>
 

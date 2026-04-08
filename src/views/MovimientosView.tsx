@@ -62,6 +62,21 @@ function MovimientosView() {
     []
   );
 
+  const productsColumns = useMemo<ColDef<Product>[]>(
+    () => [
+      { field: "barcode", headerName: "Codigo", flex: 1.2 },
+      { field: "description", headerName: "Producto", flex: 2 },
+      {
+        field: "precio",
+        headerName: "Precio",
+        flex: 0.9,
+        valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
+      },
+      { field: "stockActual", headerName: "Stock", flex: 0.8 }
+    ],
+    []
+  );
+
   const addDetail = () => {
     const product = products.find((p) => p.id === selectedId);
     const qty = Number(cantidad);
@@ -150,13 +165,13 @@ function MovimientosView() {
   };
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-3">
       <header>
         <h2 className="text-2xl font-bold">Movimientos de Entrada</h2>
         <p className="text-sm text-slate-600">Registra compras para incrementar stock.</p>
       </header>
 
-      <div className="grid gap-3 rounded-2xl bg-white p-4 shadow-sm md:grid-cols-6">
+      <div className="panel grid gap-3 md:grid-cols-6">
         <select
           value={selectedId}
           onChange={(e) => setSelectedId(e.target.value)}
@@ -220,11 +235,24 @@ function MovimientosView() {
         </button>
       </div>
 
-      <div className="rounded-2xl bg-white p-4 shadow-sm">
-        <div className="ag-theme-quartz h-[420px] w-full">
+      <div className="panel">
+        <p className="grid-title">Detalle del movimiento (AG Grid)</p>
+        <div className="ag-theme-quartz h-[30dvh] min-h-[190px] w-full">
           <AgGridReact<EntryRow> rowData={rows} columnDefs={columns} rowHeight={50} />
         </div>
         <p className="mt-3 text-lg font-bold">Total movimiento: ${totalMovimiento.toFixed(2)}</p>
+      </div>
+
+      <div className="panel">
+        <p className="grid-title">Catalogo de productos disponibles (AG Grid)</p>
+        <div className="ag-theme-quartz h-[30dvh] min-h-[190px] w-full">
+          <AgGridReact<Product>
+            rowData={products}
+            columnDefs={productsColumns}
+            rowHeight={50}
+            overlayNoRowsTemplate="No hay productos disponibles para movimientos."
+          />
+        </div>
       </div>
 
       <p className="rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">{message}</p>

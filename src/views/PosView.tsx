@@ -143,25 +143,27 @@ function PosView() {
   };
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-3">
       <header>
         <h2 className="text-2xl font-bold text-slate-900">Pantalla de Ventas</h2>
         <p className="text-sm text-slate-600">Escaneo continuo arriba y carrito abajo.</p>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="space-y-3 rounded-2xl bg-white p-4 shadow-sm">
+      <div className="grid gap-3 lg:grid-cols-2">
+        <div className="panel space-y-3">
           <h3 className="text-lg font-semibold">Lector de camara</h3>
           <BarcodeScanner onScan={onScan} />
           <p className="rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">{message}</p>
         </div>
 
-        <div className="rounded-2xl bg-white p-4 shadow-sm">
-          <div className="ag-theme-quartz h-[350px] w-full">
+        <div className="panel">
+          <p className="grid-title">Carrito (AG Grid)</p>
+          <div className="ag-theme-quartz h-[34dvh] min-h-[220px] w-full">
             <AgGridReact<CartRow>
               rowData={cart}
               columnDefs={columnDefs}
               rowHeight={50}
+              overlayNoRowsTemplate="No hay productos en el carrito. Escanea para agregar."
               domLayout="normal"
             />
           </div>
