@@ -12,6 +12,13 @@ Aplicacion PWA mobile-first para POS con modulos de inventario, movimientos de e
 
 1. Abre SQL Editor en Supabase.
 2. Ejecuta el script de [supabase/schema.sql](supabase/schema.sql).
+3. Para forzar acceso solo con login (sin publico), ejecuta [supabase/fix_rls_require_auth.sql](supabase/fix_rls_require_auth.sql).
+
+## 2.1) Configurar autenticacion en Supabase
+
+1. Ve a Authentication > Providers y habilita Email.
+2. Crea usuarios desde Authentication > Users (Add user) o habilita signup segun tu flujo.
+3. Usa esos usuarios para iniciar sesion en la pantalla de login de la app.
 
 ## 3) Variables de entorno y llaves
 
@@ -56,3 +63,4 @@ Las variables de servidor aparecen comentadas en [.env.example](.env.example) so
 - RPCs registrar_venta_con_detalles y registrar_movimiento_entrada manejan operaciones transaccionales.
 - Ajusta politicas RLS por rol en ambientes productivos.
 - Nunca subas archivos .env con llaves reales al repo.
+- La app ahora exige inicio de sesion para usar los modulos.

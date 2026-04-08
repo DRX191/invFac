@@ -103,6 +103,7 @@ alter table public.ventas enable row level security;
 alter table public."ventaDetalles" enable row level security;
 
 drop policy if exists productos_auth_all on public.productos;
+drop policy if exists productos_public_all on public.productos;
 create policy productos_auth_all on public.productos
 for all to authenticated using (true) with check (true);
 
