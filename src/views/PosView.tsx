@@ -127,6 +127,7 @@ function PosView() {
 
       const payload = {
         p_usuario_id: user.id,
+        p_usuario_email: user.email ?? "",
         p_total_venta: Number(totalVenta.toFixed(2)),
         p_detalles: cart.map((item) => ({
           productoId: item.productoId,

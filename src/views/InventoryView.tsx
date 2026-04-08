@@ -25,7 +25,8 @@ function InventoryView() {
   const [rows, setRows] = useState<Product[]>([]);
   const [form, setForm] = useState<ProductForm>(defaultForm);
   const [message, setMessage] = useState("Cargando inventario...");
-  const [mode, setMode] = useState<InventoryMode>("manage");
+  const [mode, setMode] = useState<InventoryMode | null>(null);
+  const [showModeModal, setShowModeModal] = useState(true);
 
   const loadProducts = async () => {
     const { data, error } = await supabase
@@ -134,38 +135,27 @@ function InventoryView() {
     setMessage(`Codigo escaneado: ${decodedText}`);
   }, []);
 
-  return (
-    <section className="space-y-3">
-      <header>
-        <h2 className="text-2xl font-bold">Inventario</h2>
-        <p className="text-sm text-slate-600">Gestion de productos con codigo de barras unico.</p>
-      </header>
+  const handleSelectMode = (nextMode: InventoryMode) => {
+    setMode(nextMode);
+    setShowModeModal(false);
+  };
 
-      <div className="panel">
-        <p className="mb-2 text-sm font-semibold text-slate-600">Modulo de inventario</p>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setMode("manage")}
-            className={`module-tab ${mode === "manage" ? "active" : ""}`}
-          >
-            Agregar / Editar productos
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("catalog")}
-            className={`module-tab ${mode === "catalog" ? "active" : ""}`}
-          >
-            Visualizar productos existentes
-          </button>
-        </div>
-      </div>
-
-      {mode === "manage" ? (
+  const renderModeContent = () => {
+    if (mode === "manage") {
+      return (
         <>
           <div className="panel">
-            <h3 className="mb-3 text-lg font-semibold">Escanear codigo de barras</h3>
-            <BarcodeScanner onScan={handleScanBarcode} instanceId="inventory-barcode-scanner" />
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="text-lg font-semibold">Escanear codigo de barras</h3>
+              <button
+                type="button"
+                onClick={() => setShowModeModal(true)}
+                className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold"
+              >
+                Cambiar modulo
+              </button>
+            </div>
+            <BarcodeScanner onScan={handleScanBarcode} instanceId="inventory-barcode-scanner" compact />
           </div>
 
           <form onSubmit={saveProduct} className="panel grid gap-3 md:grid-cols-4">
@@ -219,9 +209,22 @@ function InventoryView() {
             </div>
           </div>
         </>
-      ) : (
+      );
+    }
+
+    if (mode === "catalog") {
+      return (
         <div className="panel">
-          <p className="grid-title">Catalogo de productos existentes (AG Grid)</p>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="grid-title mb-0">Catalogo de productos existentes (AG Grid)</p>
+            <button
+              type="button"
+              onClick={() => setShowModeModal(true)}
+              className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold"
+            >
+              Cambiar modulo
+            </button>
+          </div>
           <div className="ag-theme-quartz h-[54dvh] min-h-[300px] w-full">
             <AgGridReact<Product>
               rowData={rows}
@@ -231,9 +234,49 @@ function InventoryView() {
             />
           </div>
         </div>
-      )}
+      );
+    }
 
-      <p className="rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">{message}</p>
+    return null;
+  };
+
+  return (
+    <section className="space-y-3">
+      <header>
+        <h2 className="text-2xl font-bold">Inventario</h2>
+        <p className="text-sm text-slate-600">Gestion de productos con codigo de barras unico.</p>
+      </header>
+
+      {showModeModal ? (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/45 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+            <h3 className="text-lg font-bold text-slate-900">Inventario</h3>
+            <p className="mt-1 text-sm text-slate-600">Selecciona el modulo que deseas abrir.</p>
+            <div className="mt-4 grid gap-2">
+              <button
+                type="button"
+                onClick={() => handleSelectMode("manage")}
+                className="module-tab active"
+              >
+                Agregar / Editar productos
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectMode("catalog")}
+                className="module-tab"
+              >
+                Visualizar productos existentes
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {!showModeModal ? renderModeContent() : null}
+
+      {!showModeModal ? (
+        <p className="rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">{message}</p>
+      ) : null}
     </section>
   );
 }

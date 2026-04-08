@@ -67,6 +67,7 @@ create table if not exists public.ventas (
   id uuid primary key default gen_random_uuid(),
   "createdAt" timestamptz not null default now(),
   "totalVenta" numeric(14,2) not null check ("totalVenta" >= 0),
+  "usuarioEmail" text,
   "usuarioId" uuid not null references auth.users(id)
 );
 
@@ -84,6 +85,7 @@ create or replace view public."vwVentasDetalle" as
 select
   v.id as "ventaId",
   v."createdAt" as "fechaVenta",
+  coalesce(v."usuarioEmail", '') as "usuarioEmail",
   v."usuarioId",
   vd.id as "ventaDetalleId",
   p.barcode,
@@ -125,6 +127,7 @@ for all to authenticated using (true) with check (true);
 
 create or replace function public.registrar_venta_con_detalles(
   p_usuario_id uuid,
+  p_usuario_email text,
   p_total_venta numeric,
   p_detalles jsonb
 )
@@ -136,8 +139,8 @@ declare
   v_venta_id uuid;
   v_item jsonb;
 begin
-  insert into public.ventas ("totalVenta", "usuarioId")
-  values (p_total_venta, p_usuario_id)
+  insert into public.ventas ("totalVenta", "usuarioId", "usuarioEmail")
+  values (p_total_venta, p_usuario_id, p_usuario_email)
   returning id into v_venta_id;
 
   for v_item in select * from jsonb_array_elements(p_detalles)
@@ -205,5 +208,5 @@ begin
 end;
 $$;
 
-grant execute on function public.registrar_venta_con_detalles(uuid, numeric, jsonb) to authenticated;
+grant execute on function public.registrar_venta_con_detalles(uuid, text, numeric, jsonb) to authenticated;
 grant execute on function public.registrar_movimiento_entrada(uuid, text, text, numeric, jsonb) to authenticated;

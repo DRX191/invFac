@@ -5,14 +5,12 @@ import { supabase } from "../lib/supabaseClient";
 
 interface ReportRow {
   ventaId: string;
+  ventaNumero: string;
   fechaVenta: string;
-  usuarioId: string;
-  barcode: string;
+  usuarioEmail: string;
   description: string;
   cantidad: number;
-  precioUnitario: number;
-  subtotal: number;
-  totalVenta: number;
+  total: number;
 }
 
 type Period = "dia" | "semana" | "mes" | "anio";
@@ -45,27 +43,14 @@ function ReportsView() {
 
   const columns = useMemo<ColDef<ReportRow>[]>(
     () => [
-      { field: "fechaVenta", headerName: "Fecha", flex: 1.2 },
-      { field: "ventaId", headerName: "Venta", flex: 1.6 },
-      { field: "usuarioId", headerName: "Usuario", flex: 1.6 },
-      { field: "barcode", headerName: "Barcode", flex: 1.2 },
+      { field: "ventaNumero", headerName: "Venta", flex: 1.1 },
+      { field: "fechaVenta", headerName: "Fecha", flex: 1.1 },
+      { field: "usuarioEmail", headerName: "Usuario", flex: 1.6 },
       { field: "description", headerName: "Producto", flex: 1.8 },
       { field: "cantidad", headerName: "Cantidad", flex: 0.8 },
       {
-        field: "precioUnitario",
-        headerName: "Precio U.",
-        flex: 1,
-        valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
-      },
-      {
-        field: "subtotal",
-        headerName: "Subtotal",
-        flex: 1,
-        valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
-      },
-      {
-        field: "totalVenta",
-        headerName: "Total Venta",
+        field: "total",
+        headerName: "Total",
         flex: 1,
         valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
       }
@@ -78,7 +63,7 @@ function ReportsView() {
 
     const { data, error } = await supabase
       .from("vwVentasDetalle")
-      .select("ventaId, fechaVenta, usuarioId, barcode, description, cantidad, precioUnitario, subtotal, totalVenta")
+      .select("ventaId, fechaVenta, usuarioEmail, usuarioId, description, cantidad, subtotal")
       .gte("fechaVenta", fromDate)
       .order("fechaVenta", { ascending: false });
 
@@ -87,7 +72,31 @@ function ReportsView() {
       return;
     }
 
-    setRows((data ?? []) as ReportRow[]);
+    const mapNumero = new Map<string, string>();
+    let counter = 1;
+    const formattedRows: ReportRow[] = (data ?? []).map((row: any) => {
+      if (!mapNumero.has(row.ventaId)) {
+        mapNumero.set(row.ventaId, `F-${String(counter).padStart(6, "0")}`);
+        counter += 1;
+      }
+
+      const rawDate = new Date(row.fechaVenta);
+      const day = String(rawDate.getDate()).padStart(2, "0");
+      const month = String(rawDate.getMonth() + 1).padStart(2, "0");
+      const year = rawDate.getFullYear();
+
+      return {
+        ventaId: row.ventaId,
+        ventaNumero: mapNumero.get(row.ventaId) ?? "",
+        fechaVenta: `${day}-${month}-${year}`,
+        usuarioEmail: row.usuarioEmail || row.usuarioId,
+        description: row.description,
+        cantidad: row.cantidad,
+        total: Number(row.subtotal)
+      };
+    });
+
+    setRows(formattedRows);
     setMessage(`Reporte cargado para periodo: ${current}.`);
   };
 
