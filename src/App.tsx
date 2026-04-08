@@ -6,6 +6,7 @@ import InventoryView from "./views/InventoryView";
 import MovimientosView from "./views/MovimientosView";
 import ReportsView from "./views/ReportsView";
 import LoginView from "./views/LoginView";
+import ResetPasswordView from "./views/ResetPasswordView";
 import { isSupabaseConfigured, supabaseConfigError } from "./lib/supabaseClient";
 import { supabase } from "./lib/supabaseClient";
 
@@ -66,6 +67,13 @@ function App() {
         </p>
       </div>
     );
+  }
+
+  if (location.pathname === "/auth/reset-password") {
+    if (session) {
+      return <Navigate to="/pos" replace />;
+    }
+    return <ResetPasswordView />;
   }
 
   if (!session) {

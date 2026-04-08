@@ -7,6 +7,23 @@ function LoginView() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("Ingresa con tu usuario para usar el sistema.");
 
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setMessage("Escribe tu correo y luego presiona Olvide mi contrasena.");
+      return;
+    }
+
+    const redirectTo = `${window.location.origin}/auth/reset-password`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+
+    if (error) {
+      setMessage(`No se pudo enviar el correo de recuperacion: ${error.message}`);
+      return;
+    }
+
+    setMessage("Te enviamos un correo para recuperar tu contrasena.");
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -58,6 +75,13 @@ function LoginView() {
             className="w-full rounded-xl bg-brand-700 px-5 py-3 text-base font-bold text-white disabled:opacity-60"
           >
             {loading ? "Ingresando..." : "Iniciar sesion"}
+          </button>
+          <button
+            type="button"
+            onClick={handleForgotPassword}
+            className="w-full rounded-xl border border-slate-300 px-5 py-3 text-base font-semibold text-slate-700"
+          >
+            Olvide mi contrasena
           </button>
         </form>
 

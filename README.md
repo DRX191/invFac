@@ -19,6 +19,11 @@ Aplicacion PWA mobile-first para POS con modulos de inventario, movimientos de e
 1. Ve a Authentication > Providers y habilita Email.
 2. Crea usuarios desde Authentication > Users (Add user) o habilita signup segun tu flujo.
 3. Usa esos usuarios para iniciar sesion en la pantalla de login de la app.
+4. En Authentication > URL Configuration define:
+   - Site URL: tu dominio de Vercel (ejemplo https://tu-app.vercel.app)
+   - Redirect URLs: agrega https://tu-app.vercel.app/auth/reset-password
+
+Sin esa configuracion el enlace del correo de recuperacion puede abrir una pagina vacia o ruta invalida.
 
 ## 3) Variables de entorno y llaves
 
