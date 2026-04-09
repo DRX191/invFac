@@ -20,18 +20,66 @@ function PosView() {
     [cart]
   );
 
+  const adjustQuantity = useCallback((productoId: string, delta: number) => {
+    setCart((prev) => {
+      return prev
+        .map((row) => {
+          if (row.productoId !== productoId) {
+            return row;
+          }
+          const nextQty = row.cantidad + delta;
+          if (nextQty <= 0) {
+            return null;
+          }
+          return {
+            ...row,
+            cantidad: nextQty,
+            subtotal: Number((nextQty * row.precioUnitario).toFixed(2))
+          };
+        })
+        .filter((row): row is CartRow => Boolean(row));
+    });
+  }, []);
+
   const columnDefs = useMemo<ColDef<CartRow>[]>(
     () => [
       {
         field: "description",
         headerName: "Producto",
-        width: 260,
-        valueGetter: (p) => {
-          const row = p.data;
+        width: 260
+      },
+      {
+        field: "cantidad",
+        headerName: "Cantidad",
+        width: 160,
+        sortable: false,
+        cellRenderer: (p: any) => {
+          const row = p.data as CartRow | undefined;
           if (!row) {
-            return "";
+            return null;
           }
-          return row.cantidad > 1 ? `${row.description} x${row.cantidad}` : row.description;
+
+          return (
+            <div className="qty-cell">
+              <button
+                type="button"
+                className="qty-btn"
+                onClick={() => adjustQuantity(row.productoId, -1)}
+                aria-label="Quitar uno"
+              >
+                <span className="material-symbols-rounded">remove</span>
+              </button>
+              <span className="qty-value">{row.cantidad}</span>
+              <button
+                type="button"
+                className="qty-btn"
+                onClick={() => adjustQuantity(row.productoId, 1)}
+                aria-label="Agregar uno"
+              >
+                <span className="material-symbols-rounded">add</span>
+              </button>
+            </div>
+          );
         }
       },
       {
@@ -41,7 +89,7 @@ function PosView() {
         valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
       }
     ],
-    []
+    [adjustQuantity]
   );
 
   const defaultColDef = useMemo<ColDef>(
@@ -165,13 +213,12 @@ function PosView() {
   return (
     <section className="space-y-3">
       <header>
-        <h2 className="text-2xl font-bold text-slate-900">Pantalla de Ventas</h2>
-        <p className="text-sm text-slate-600">Escaneo continuo arriba y carrito abajo.</p>
+        <h2 className="text-2xl font-bold text-slate-900">Compra de productos</h2>
+        <p className="text-sm text-slate-600">Escanea productos y registra la compra.</p>
       </header>
 
       <div className="grid gap-3 lg:grid-cols-2">
         <div className="panel space-y-3">
-          <h3 className="text-lg font-semibold">Lector de camara</h3>
           <BarcodeScanner onScan={onScan} compact />
           <p className="rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">{message}</p>
         </div>
@@ -179,7 +226,7 @@ function PosView() {
         <div className="panel">
           <p className="grid-title">Carrito</p>
           <div className="grid-wrap">
-          <div className="ag-theme-quartz h-[34dvh] min-h-[220px] min-w-[500px] w-full">
+          <div className="ag-theme-quartz h-[34dvh] min-h-[220px] min-w-[320px] w-full">
             <AgGridReact<CartRow>
               rowData={cart}
               columnDefs={columnDefs}

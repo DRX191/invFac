@@ -115,7 +115,7 @@ function App() {
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="phone-container px-3 py-3 sm:px-6">
           <div className="relative flex min-w-0 items-center gap-2">
-            <h1 className="mr-auto text-xl font-extrabold tracking-tight text-brand-900">Pulperia</h1>
+            <h1 className="mr-auto text-xl font-extrabold tracking-tight text-brand-900">Pulperia Marifer</h1>
 
             <button
               type="button"

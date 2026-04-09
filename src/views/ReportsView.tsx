@@ -13,7 +13,12 @@ interface ReportRow {
 
 type Period = "dia" | "semana" | "mes" | "anio";
 
-const periodOptions: Period[] = ["dia", "semana", "mes", "anio"];
+const periodOptions: Array<{ value: Period; label: string }> = [
+  { value: "dia", label: "Diario" },
+  { value: "semana", label: "Semanal" },
+  { value: "mes", label: "Mensual" },
+  { value: "anio", label: "Anual" }
+];
 
 function getFromDate(period: Period) {
   const now = new Date();
@@ -36,7 +41,12 @@ function getFromDate(period: Period) {
 
 function ReportsView() {
   const [rows, setRows] = useState<ReportRow[]>([]);
+  const [users, setUsers] = useState<string[]>([]);
   const [period, setPeriod] = useState<Period>("dia");
+  const [selectedUser, setSelectedUser] = useState<string>("ALL");
+  const [customMode, setCustomMode] = useState(false);
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const [message, setMessage] = useState("Consulta ventas por periodo.");
 
   const columns = useMemo<ColDef<ReportRow>[]>(
@@ -67,14 +77,43 @@ function ReportsView() {
     []
   );
 
-  const loadReport = async (current: Period) => {
-    const fromDate = getFromDate(current).toISOString();
+  const applyReportQuery = async (params: {
+    periodValue: Period;
+    userValue: string;
+    useCustom: boolean;
+    fromDate?: string;
+    toDate?: string;
+  }) => {
+    const {
+      periodValue,
+      userValue,
+      useCustom,
+      fromDate,
+      toDate
+    } = params;
 
-    const { data, error } = await supabase
+    const baseFrom = useCustom
+      ? new Date(`${fromDate}T00:00:00`)
+      : getFromDate(periodValue);
+    const baseTo = useCustom
+      ? new Date(`${toDate}T23:59:59.999`)
+      : null;
+
+    let query = supabase
       .from("vwVentasDetalle")
       .select("*")
-      .gte("fechaVenta", fromDate)
+      .gte("fechaVenta", baseFrom.toISOString())
       .order("fechaVenta", { ascending: false });
+
+    if (baseTo) {
+      query = query.lte("fechaVenta", baseTo.toISOString());
+    }
+
+    if (userValue !== "ALL") {
+      query = query.eq("usuarioEmail", userValue);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       setMessage(`Error consultando reporte: ${error.message}`);
@@ -99,36 +138,152 @@ function ReportsView() {
     });
 
     setRows(formattedRows);
-    setMessage(`Reporte cargado para periodo: ${current}.`);
+    const periodText = periodOptions.find((item) => item.value === periodValue)?.label ?? periodValue;
+    const userText = userValue === "ALL" ? "todos" : userValue;
+    const customText = useCustom && fromDate && toDate ? ` (${fromDate} a ${toDate})` : "";
+    setMessage(`Reporte cargado: ${periodText}, usuario ${userText}${customText}.`);
+  };
+
+  const loadUsers = async () => {
+    const { data, error } = await supabase
+      .from("vwVentasDetalle")
+      .select("usuarioEmail")
+      .not("usuarioEmail", "is", null)
+      .order("usuarioEmail", { ascending: true })
+      .limit(2000);
+
+    if (error) {
+      setMessage(`No se pudieron cargar usuarios: ${error.message}`);
+      return;
+    }
+
+    const uniques = Array.from(new Set((data ?? []).map((row: any) => String(row.usuarioEmail || "").trim()).filter(Boolean)));
+    setUsers(uniques);
+  };
+
+  const runAutoReport = async (nextPeriod: Period, nextUser: string) => {
+    await applyReportQuery({
+      periodValue: nextPeriod,
+      userValue: nextUser,
+      useCustom: false
+    });
+  };
+
+  const runCustomReport = async () => {
+    if (!customFrom || !customTo) {
+      setMessage("Selecciona fecha inicial y final para modo custom.");
+      return;
+    }
+
+    if (customFrom > customTo) {
+      setMessage("La fecha inicial no puede ser mayor a la fecha final.");
+      return;
+    }
+
+    await applyReportQuery({
+      periodValue: period,
+      userValue: selectedUser,
+      useCustom: true,
+      fromDate: customFrom,
+      toDate: customTo
+    });
   };
 
   useEffect(() => {
-    void loadReport(period);
-  }, [period]);
+    void loadUsers();
+    void runAutoReport(period, selectedUser);
+  }, []);
+
+  useEffect(() => {
+    if (customMode) {
+      return;
+    }
+    void runAutoReport(period, selectedUser);
+  }, [period, selectedUser, customMode]);
 
   return (
     <section className="space-y-3">
       <header>
         <h2 className="text-2xl font-bold">Reporte de Ventas Detalle</h2>
-        <p className="text-sm text-slate-600">Visualiza ventas por dia, semana, mes o anio.</p>
+        <p className="text-sm text-slate-600">Filtra ventas por periodo, usuario o rango personalizado.</p>
       </header>
 
-      <div className="panel flex flex-wrap gap-2">
-        {periodOptions.map((item) => (
+      <div className="panel grid gap-2 md:grid-cols-4">
+        <select
+          value={period}
+          onChange={(e) => setPeriod(e.target.value as Period)}
+          className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+        >
+          {periodOptions.map((item) => (
+            <option key={item.value} value={item.value}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={selectedUser}
+          onChange={(e) => setSelectedUser(e.target.value)}
+          className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+        >
+          <option value="ALL">Todos los usuarios</option>
+          {users.map((user) => (
+            <option key={user} value={user}>
+              {user}
+            </option>
+          ))}
+        </select>
+
+        <button
+          type="button"
+          onClick={() => setCustomMode((prev) => !prev)}
+          className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700"
+        >
+          {customMode ? "Volver a filtro automatico" : "Custom por rango"}
+        </button>
+
+        {customMode ? (
           <button
-            key={item}
             type="button"
-            onClick={() => setPeriod(item)}
-            className={`rounded-xl px-5 py-3 text-base font-bold ${
-              item === period
-                ? "bg-brand-700 text-white"
-                : "border border-slate-300 bg-white text-slate-700"
-            }`}
+            onClick={runCustomReport}
+            className="rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-bold text-white"
           >
-            {item.toUpperCase()}
+            Aplicar custom
           </button>
-        ))}
+        ) : (
+          <button
+            type="button"
+            onClick={() => runAutoReport(period, selectedUser)}
+            className="rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-bold text-white"
+          >
+            Actualizar reporte
+          </button>
+        )}
       </div>
+
+      {customMode ? (
+        <div className="panel grid gap-2 md:grid-cols-3">
+          <input
+            type="date"
+            value={customFrom}
+            onChange={(e) => setCustomFrom(e.target.value)}
+            className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
+          />
+          <input
+            type="date"
+            value={customTo}
+            onChange={(e) => setCustomTo(e.target.value)}
+            className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
+          />
+          <button
+            type="button"
+            onClick={runCustomReport}
+            className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white"
+          >
+            Consultar rango
+          </button>
+        </div>
+      ) : null}
 
       <div className="panel">
         <p className="grid-title">Ventas detalladas</p>
@@ -144,7 +299,7 @@ function ReportsView() {
             overlayNoRowsTemplate="No hay ventas en el periodo seleccionado."
           />
         </div>
-        </div>
+      </div>
       </div>
 
       <p className="rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">{message}</p>

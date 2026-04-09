@@ -292,7 +292,7 @@ function InventoryView() {
       return (
         <div className="panel">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="grid-title mb-0">Catalogo de productos existentes</p>
+            <p className="grid-title mb-0">Inventario de productos</p>
             <button
               type="button"
               onClick={() => setShowModeModal(true)}
@@ -342,7 +342,7 @@ function InventoryView() {
                 onClick={() => handleSelectMode("manage")}
                 className="module-tab active"
               >
-                Agregar / Editar productos
+                Registrar productos
               </button>
               <button
                 type="button"

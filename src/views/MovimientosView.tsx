@@ -21,8 +21,8 @@ type MovimientoMode = "manage" | "history";
 function MovimientosView() {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedId, setSelectedId] = useState("");
-  const [cantidad, setCantidad] = useState("1");
-  const [costoUnitario, setCostoUnitario] = useState("0");
+  const [cantidad, setCantidad] = useState("");
+  const [costoUnitario, setCostoUnitario] = useState("");
   const [proveedor, setProveedor] = useState("");
   const [observacion, setObservacion] = useState("");
   const [rows, setRows] = useState<EntryRow[]>([]);
@@ -134,7 +134,7 @@ function MovimientosView() {
     const qty = Number(cantidad);
     const cost = Number(costoUnitario);
 
-    if (!product || qty <= 0 || cost < 0) {
+    if (!product || !cantidad || !costoUnitario || !Number.isFinite(qty) || !Number.isFinite(cost) || qty <= 0 || cost < 0) {
       setMessage("Selecciona producto y valores validos.");
       return;
     }
@@ -170,8 +170,8 @@ function MovimientosView() {
       ];
     });
 
-    setCantidad("1");
-    setCostoUnitario("0");
+    setCantidad("");
+    setCostoUnitario("");
     setMessage(`Detalle agregado: ${product.description}`);
   };
 
@@ -263,7 +263,17 @@ function MovimientosView() {
 
             <input
               value={cantidad}
-              onChange={(e) => setCantidad(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === "") {
+                  setCantidad("");
+                  return;
+                }
+                const parsed = Number(value);
+                if (Number.isFinite(parsed) && parsed >= 0) {
+                  setCantidad(value);
+                }
+              }}
               type="number"
               min="1"
               className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
@@ -272,7 +282,17 @@ function MovimientosView() {
 
             <input
               value={costoUnitario}
-              onChange={(e) => setCostoUnitario(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === "") {
+                  setCostoUnitario("");
+                  return;
+                }
+                const parsed = Number(value);
+                if (Number.isFinite(parsed) && parsed >= 0) {
+                  setCostoUnitario(value);
+                }
+              }}
               type="number"
               min="0"
               step="0.01"
@@ -335,7 +355,7 @@ function MovimientosView() {
       return (
         <div className="panel">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="grid-title mb-0">Movimientos registrados</p>
+            <p className="grid-title mb-0">Movimientos realizados</p>
             <button
               type="button"
               onClick={() => setShowModeModal(true)}
@@ -397,7 +417,7 @@ function MovimientosView() {
                 }}
                 className="module-tab"
               >
-                Inventario de movimientos
+                Movimientos realizados
               </button>
             </div>
           </div>
