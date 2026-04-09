@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "@ag-grid-community/react";
-import type { ColDef } from "@ag-grid-community/core";
+import type { ColDef, RowClickedEvent } from "@ag-grid-community/core";
 import { supabase } from "../lib/supabaseClient";
 import type { Product } from "../types/models";
 import BarcodeScanner from "../components/BarcodeScanner";
 
 interface ProductForm {
+  barcode: string;
+  description: string;
+  precio: string;
+  stockActual: string;
+}
+
+interface EditModalState {
+  id: string;
   barcode: string;
   description: string;
   precio: string;
@@ -28,6 +36,19 @@ function InventoryView() {
   const [mode, setMode] = useState<InventoryMode | null>(null);
   const [showModeModal, setShowModeModal] = useState(true);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [editModal, setEditModal] = useState<EditModalState | null>(null);
+
+  const defaultColDef = useMemo<ColDef>(
+    () => ({
+      minWidth: 140,
+      resizable: true,
+      sortable: true,
+      lockVisible: true,
+      suppressMovable: true,
+      suppressHeaderMenuButton: true
+    }),
+    []
+  );
 
   const loadProducts = async () => {
     const { data, error } = await supabase
@@ -50,18 +71,65 @@ function InventoryView() {
 
   const catalogColumns = useMemo<ColDef<Product>[]>(
     () => [
-      { field: "barcode", headerName: "Codigo de barras", flex: 1.3 },
-      { field: "description", headerName: "Descripcion", flex: 2 },
+      { field: "barcode", headerName: "Codigo de barras", width: 170 },
+      { field: "description", headerName: "Descripcion", width: 260 },
       {
         field: "precio",
         headerName: "Precio",
-        flex: 1,
+        width: 140,
         valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
       },
-      { field: "stockActual", headerName: "Stock", flex: 0.8 }
+      { field: "stockActual", headerName: "Stock", width: 120 }
     ],
     []
   );
+
+  const openEditModalFromRow = (event: RowClickedEvent<Product>) => {
+    const row = event.data;
+    if (!row) {
+      return;
+    }
+    setEditModal({
+      id: row.id,
+      barcode: row.barcode,
+      description: row.description,
+      precio: String(row.precio),
+      stockActual: String(row.stockActual)
+    });
+  };
+
+  const saveEditModal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editModal) {
+      return;
+    }
+
+    const payload = {
+      barcode: editModal.barcode.trim(),
+      description: editModal.description.trim(),
+      precio: Number(editModal.precio),
+      stockActual: Number(editModal.stockActual)
+    };
+
+    if (!payload.barcode || !payload.description || payload.precio <= 0 || payload.stockActual < 0) {
+      setMessage("Completa los campos del modal con valores validos.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("productos")
+      .update(payload)
+      .eq("id", editModal.id);
+
+    if (error) {
+      setMessage(`Error al actualizar producto: ${error.message}`);
+      return;
+    }
+
+    setEditModal(null);
+    setMessage("Producto actualizado desde modal.");
+    await loadProducts();
+  };
 
   const saveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -224,7 +292,7 @@ function InventoryView() {
       return (
         <div className="panel">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="grid-title mb-0">Catalogo de productos existentes (AG Grid)</p>
+            <p className="grid-title mb-0">Catalogo de productos existentes</p>
             <button
               type="button"
               onClick={() => setShowModeModal(true)}
@@ -233,13 +301,19 @@ function InventoryView() {
               Cambiar modulo
             </button>
           </div>
-          <div className="ag-theme-quartz h-[54dvh] min-h-[300px] w-full">
+          <div className="grid-wrap">
+          <div className="ag-theme-quartz h-[54dvh] min-h-[300px] min-w-[740px] w-full">
             <AgGridReact<Product>
               rowData={rows}
               columnDefs={catalogColumns}
+              defaultColDef={defaultColDef}
               rowHeight={50}
+              suppressDragLeaveHidesColumns
+              suppressMovableColumns
+              onRowClicked={openEditModalFromRow}
               overlayNoRowsTemplate="No hay productos registrados aun."
             />
+          </div>
           </div>
         </div>
       );
@@ -283,6 +357,53 @@ function InventoryView() {
       ) : null}
 
       {!showModeModal ? renderModeContent() : null}
+
+      {editModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+            <h3 className="text-lg font-bold text-slate-900">Editar producto</h3>
+            <form onSubmit={saveEditModal} className="mt-3 grid gap-3">
+              <input
+                value={editModal.barcode}
+                onChange={(e) => setEditModal((prev) => (prev ? { ...prev, barcode: e.target.value } : prev))}
+                placeholder="Codigo de barras"
+                className="rounded-xl border border-slate-300 px-3 py-3"
+              />
+              <input
+                value={editModal.description}
+                onChange={(e) => setEditModal((prev) => (prev ? { ...prev, description: e.target.value } : prev))}
+                placeholder="Descripcion"
+                className="rounded-xl border border-slate-300 px-3 py-3"
+              />
+              <input
+                value={editModal.precio}
+                onChange={(e) => setEditModal((prev) => (prev ? { ...prev, precio: e.target.value } : prev))}
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="Precio"
+                className="rounded-xl border border-slate-300 px-3 py-3"
+              />
+              <input
+                value={editModal.stockActual}
+                onChange={(e) => setEditModal((prev) => (prev ? { ...prev, stockActual: e.target.value } : prev))}
+                type="number"
+                min="0"
+                placeholder="Stock"
+                className="rounded-xl border border-slate-300 px-3 py-3"
+              />
+              <div className="mt-1 flex gap-2">
+                <button type="button" onClick={() => setEditModal(null)} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">
+                  Cancelar
+                </button>
+                <button type="submit" className="rounded-xl bg-brand-700 px-4 py-2 text-sm font-bold text-white">
+                  Guardar cambios
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
 
       {!showModeModal ? (
         <p className="rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">{message}</p>

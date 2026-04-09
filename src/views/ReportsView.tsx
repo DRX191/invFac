@@ -41,17 +41,29 @@ function ReportsView() {
 
   const columns = useMemo<ColDef<ReportRow>[]>(
     () => [
-      { field: "fechaVenta", headerName: "Fecha", flex: 1.1 },
-      { field: "usuarioEmail", headerName: "Usuario", flex: 1.6 },
-      { field: "description", headerName: "Producto", flex: 1.8 },
-      { field: "cantidad", headerName: "Cantidad", flex: 0.8 },
+      { field: "fechaVenta", headerName: "Fecha", width: 130 },
+      { field: "usuarioEmail", headerName: "Usuario", width: 230 },
+      { field: "description", headerName: "Producto", width: 260 },
+      { field: "cantidad", headerName: "Cantidad", width: 120 },
       {
         field: "total",
         headerName: "Total",
-        flex: 1,
+        width: 140,
         valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
       }
     ],
+    []
+  );
+
+  const defaultColDef = useMemo<ColDef>(
+    () => ({
+      minWidth: 120,
+      resizable: true,
+      sortable: true,
+      lockVisible: true,
+      suppressMovable: true,
+      suppressHeaderMenuButton: true
+    }),
     []
   );
 
@@ -60,7 +72,7 @@ function ReportsView() {
 
     const { data, error } = await supabase
       .from("vwVentasDetalle")
-      .select("ventaId, fechaVenta, usuarioEmail, usuarioId, description, cantidad, subtotal")
+      .select("*")
       .gte("fechaVenta", fromDate)
       .order("fechaVenta", { ascending: false });
 
@@ -75,12 +87,14 @@ function ReportsView() {
       const month = String(rawDate.getMonth() + 1).padStart(2, "0");
       const year = rawDate.getFullYear();
 
+      const totalRaw = row.subtotal ?? row.totalVenta ?? 0;
+
       return {
         fechaVenta: `${day}-${month}-${year}`,
-        usuarioEmail: row.usuarioEmail || row.usuarioId,
-        description: row.description,
-        cantidad: row.cantidad,
-        total: Number(row.subtotal)
+        usuarioEmail: row.usuarioEmail || row.usuarioId || "-",
+        description: row.description || "-",
+        cantidad: Number(row.cantidad ?? 0),
+        total: Number(totalRaw)
       };
     });
 
@@ -117,14 +131,19 @@ function ReportsView() {
       </div>
 
       <div className="panel">
-        <p className="grid-title">Ventas detalladas (AG Grid)</p>
-        <div className="ag-theme-quartz h-[52dvh] min-h-[280px] w-full">
+        <p className="grid-title">Ventas detalladas</p>
+        <div className="grid-wrap">
+        <div className="ag-theme-quartz h-[52dvh] min-h-[280px] min-w-[900px] w-full">
           <AgGridReact<ReportRow>
             rowData={rows}
             columnDefs={columns}
+            defaultColDef={defaultColDef}
             rowHeight={50}
+            suppressDragLeaveHidesColumns
+            suppressMovableColumns
             overlayNoRowsTemplate="No hay ventas en el periodo seleccionado."
           />
+        </div>
         </div>
       </div>
 

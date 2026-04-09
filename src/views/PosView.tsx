@@ -25,7 +25,7 @@ function PosView() {
       {
         field: "description",
         headerName: "Producto",
-        flex: 2,
+        width: 260,
         valueGetter: (p) => {
           const row = p.data;
           if (!row) {
@@ -37,10 +37,22 @@ function PosView() {
       {
         field: "subtotal",
         headerName: "Precio",
-        flex: 1,
+        width: 140,
         valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
       }
     ],
+    []
+  );
+
+  const defaultColDef = useMemo<ColDef>(
+    () => ({
+      minWidth: 120,
+      resizable: true,
+      sortable: true,
+      lockVisible: true,
+      suppressMovable: true,
+      suppressHeaderMenuButton: true
+    }),
     []
   );
 
@@ -165,15 +177,20 @@ function PosView() {
         </div>
 
         <div className="panel">
-          <p className="grid-title">Carrito (AG Grid)</p>
-          <div className="ag-theme-quartz h-[34dvh] min-h-[220px] w-full">
+          <p className="grid-title">Carrito</p>
+          <div className="grid-wrap">
+          <div className="ag-theme-quartz h-[34dvh] min-h-[220px] min-w-[500px] w-full">
             <AgGridReact<CartRow>
               rowData={cart}
               columnDefs={columnDefs}
+              defaultColDef={defaultColDef}
               rowHeight={50}
+              suppressDragLeaveHidesColumns
+              suppressMovableColumns
               overlayNoRowsTemplate="No hay productos en el carrito. Escanea para agregar."
               domLayout="normal"
             />
+          </div>
           </div>
 
           <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">

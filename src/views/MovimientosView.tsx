@@ -43,37 +43,34 @@ function MovimientosView() {
 
   const columns = useMemo<ColDef<EntryRow>[]>(
     () => [
-      { field: "barcode", headerName: "Codigo", flex: 1.1 },
-      { field: "description", headerName: "Producto", flex: 1.8 },
-      { field: "cantidad", headerName: "Cantidad", flex: 0.8 },
+      { field: "barcode", headerName: "Codigo", width: 160 },
+      { field: "description", headerName: "Producto", width: 240 },
+      { field: "cantidad", headerName: "Cantidad", width: 120 },
       {
         field: "costoUnitario",
         headerName: "Costo U.",
-        flex: 1,
+        width: 140,
         valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
       },
       {
         field: "subtotal",
         headerName: "Subtotal",
-        flex: 1,
+        width: 140,
         valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
       }
     ],
     []
   );
 
-  const productsColumns = useMemo<ColDef<Product>[]>(
-    () => [
-      { field: "barcode", headerName: "Codigo", flex: 1.2 },
-      { field: "description", headerName: "Producto", flex: 2 },
-      {
-        field: "precio",
-        headerName: "Precio",
-        flex: 0.9,
-        valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
-      },
-      { field: "stockActual", headerName: "Stock", flex: 0.8 }
-    ],
+  const defaultColDef = useMemo<ColDef>(
+    () => ({
+      minWidth: 120,
+      resizable: true,
+      sortable: true,
+      lockVisible: true,
+      suppressMovable: true,
+      suppressHeaderMenuButton: true
+    }),
     []
   );
 
@@ -171,11 +168,11 @@ function MovimientosView() {
         <p className="text-sm text-slate-600">Registra compras para incrementar stock.</p>
       </header>
 
-      <div className="panel grid gap-3 md:grid-cols-6">
+      <div className="panel grid grid-cols-2 gap-2 md:grid-cols-6">
         <select
           value={selectedId}
           onChange={(e) => setSelectedId(e.target.value)}
-          className="rounded-xl border border-slate-300 px-3 py-3 md:col-span-2"
+          className="col-span-2 rounded-xl border border-slate-300 px-3 py-2.5 text-sm md:col-span-3"
         >
           <option value="">Selecciona producto</option>
           {products.map((product) => (
@@ -190,7 +187,7 @@ function MovimientosView() {
           onChange={(e) => setCantidad(e.target.value)}
           type="number"
           min="1"
-          className="rounded-xl border border-slate-300 px-3 py-3"
+          className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
           placeholder="Cantidad"
         />
 
@@ -200,21 +197,21 @@ function MovimientosView() {
           type="number"
           min="0"
           step="0.01"
-          className="rounded-xl border border-slate-300 px-3 py-3"
+          className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
           placeholder="Costo unitario"
         />
 
         <input
           value={proveedor}
           onChange={(e) => setProveedor(e.target.value)}
-          className="rounded-xl border border-slate-300 px-3 py-3"
+          className="col-span-2 rounded-xl border border-slate-300 px-3 py-2.5 text-sm md:col-span-2"
           placeholder="Proveedor (opcional)"
         />
 
         <button
           type="button"
           onClick={addDetail}
-          className="rounded-xl bg-brand-700 px-4 py-3 text-base font-bold text-white"
+          className="col-span-2 rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-bold text-white md:col-span-1"
         >
           Agregar
         </button>
@@ -222,37 +219,34 @@ function MovimientosView() {
         <input
           value={observacion}
           onChange={(e) => setObservacion(e.target.value)}
-          className="rounded-xl border border-slate-300 px-3 py-3 md:col-span-5"
+          className="col-span-2 rounded-xl border border-slate-300 px-3 py-2.5 text-sm md:col-span-5"
           placeholder="Observacion"
         />
 
         <button
           type="button"
           onClick={guardarMovimiento}
-          className="rounded-xl bg-emerald-600 px-4 py-3 text-base font-bold text-white md:col-span-1"
+          className="col-span-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white md:col-span-1"
         >
           Guardar movimiento
         </button>
       </div>
 
       <div className="panel">
-        <p className="grid-title">Detalle del movimiento (AG Grid)</p>
-        <div className="ag-theme-quartz h-[30dvh] min-h-[190px] w-full">
-          <AgGridReact<EntryRow> rowData={rows} columnDefs={columns} rowHeight={50} />
-        </div>
-        <p className="mt-3 text-lg font-bold">Total movimiento: ${totalMovimiento.toFixed(2)}</p>
-      </div>
-
-      <div className="panel">
-        <p className="grid-title">Catalogo de productos disponibles (AG Grid)</p>
-        <div className="ag-theme-quartz h-[30dvh] min-h-[190px] w-full">
-          <AgGridReact<Product>
-            rowData={products}
-            columnDefs={productsColumns}
+        <p className="grid-title">Detalle del movimiento</p>
+        <div className="grid-wrap">
+        <div className="ag-theme-quartz h-[27dvh] min-h-[170px] min-w-[760px] w-full">
+          <AgGridReact<EntryRow>
+            rowData={rows}
+            columnDefs={columns}
+            defaultColDef={defaultColDef}
             rowHeight={50}
-            overlayNoRowsTemplate="No hay productos disponibles para movimientos."
+            suppressDragLeaveHidesColumns
+            suppressMovableColumns
           />
         </div>
+        </div>
+        <p className="mt-3 text-lg font-bold">Total movimiento: ${totalMovimiento.toFixed(2)}</p>
       </div>
 
       <p className="rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">{message}</p>

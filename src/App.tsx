@@ -25,6 +25,20 @@ function App() {
   const location = useLocation();
   const [session, setSession] = useState<Session | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("invfac.theme");
+    if (saved === "light" || saved === "dark") {
+      setTheme(saved);
+    }
+  }, []);
+
+  useEffect(() => {
+    document.body.classList.toggle("theme-dark", theme === "dark");
+    document.body.classList.toggle("theme-light", theme === "light");
+    window.localStorage.setItem("invfac.theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -51,6 +65,10 @@ function App() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+  };
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
   };
 
   if (!isSupabaseConfigured) {
@@ -93,6 +111,13 @@ function App() {
             <span className="hidden rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600 sm:inline-block">
             {session.user.email}
             </span>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="whitespace-nowrap rounded-xl border border-slate-300 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700"
+            >
+              {theme === "dark" ? "Modo claro" : "Modo oscuro"}
+            </button>
             <button
               type="button"
               onClick={handleSignOut}
