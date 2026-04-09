@@ -46,7 +46,8 @@ function PosView() {
       {
         field: "cantidad",
         headerName: "Cantidad",
-        width: 170,
+        width: 136,
+        headerClass: "qty-header-center",
         sortable: false,
         cellRenderer: (p: any) => {
           const row = p.data as CartRow | undefined;

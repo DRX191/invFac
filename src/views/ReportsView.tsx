@@ -198,15 +198,28 @@ function ReportsView() {
 
   useEffect(() => {
     void loadUsers();
-    void runPresetReport(period, selectedUser);
   }, []);
 
   useEffect(() => {
-    if (reportMode !== "predeterminado") {
+    if (reportMode === "predeterminado") {
+      void runPresetReport(period, selectedUser);
       return;
     }
-    void runPresetReport(period, selectedUser);
-  }, [period, selectedUser, reportMode]);
+
+    if (!customFrom || !customTo) {
+      setRows([]);
+      setMessage("Selecciona fecha inicial y final para modo ajustado.");
+      return;
+    }
+
+    if (customFrom > customTo) {
+      setRows([]);
+      setMessage("La fecha inicial no puede ser mayor a la fecha final.");
+      return;
+    }
+
+    void runCustomReport();
+  }, [period, selectedUser, reportMode, customFrom, customTo]);
 
   return (
     <section className="space-y-3">
@@ -215,7 +228,7 @@ function ReportsView() {
         <p className="text-sm text-slate-600">Filtra ventas por periodo, usuario o rango personalizado.</p>
       </header>
 
-      <div className="panel grid gap-2 md:grid-cols-5">
+      <div className="panel grid gap-2 md:grid-cols-4">
         <select
           value={reportMode}
           onChange={(e) => setReportMode(e.target.value as ReportMode)}
@@ -268,19 +281,6 @@ function ReportsView() {
           ))}
         </select>
 
-        <button
-          type="button"
-          onClick={() => {
-            if (reportMode === "predeterminado") {
-              void runPresetReport(period, selectedUser);
-              return;
-            }
-            void runCustomReport();
-          }}
-          className="rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-bold text-white"
-        >
-          {reportMode === "predeterminado" ? "Actualizar reporte" : "Consultar rango"}
-        </button>
       </div>
 
       <div className="panel">

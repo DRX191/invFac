@@ -222,7 +222,6 @@ function InventoryView() {
         <>
           <div className="panel">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="text-lg font-semibold">Escanear codigo de barras</h3>
               <button
                 type="button"
                 onClick={() => setShowModeModal(true)}

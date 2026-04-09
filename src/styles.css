@@ -97,6 +97,10 @@ body {
   font-weight: 700;
 }
 
+.ag-theme-quartz .ag-header-cell.qty-header-center .ag-header-cell-label {
+  justify-content: center;
+}
+
 .module-tab {
   border-radius: 0.75rem;
   border: 1px solid #cbd5e1;
