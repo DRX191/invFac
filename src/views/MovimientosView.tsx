@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "@ag-grid-community/react";
-import type { ColDef } from "@ag-grid-community/core";
+import type { ColDef, RowClickedEvent } from "@ag-grid-community/core";
 import { useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import type { CartRow, Product } from "../types/models";
@@ -36,6 +36,15 @@ interface EditMovimientoModalState {
 interface DeleteConfirmState {
   movimientoId: string;
   confirmText: string;
+}
+
+interface MovimientoDetalleRaw {
+  id: string;
+  movimientoId: string;
+  productoId: string;
+  cantidad: number;
+  costoUnitario: number;
+  subtotal: number;
 }
 
 type MovimientoMode = "manage" | "history";
@@ -149,6 +158,63 @@ function MovimientosView() {
     []
   );
 
+  const isMissingFunctionError = (err: any, functionName: string) => {
+    const msg = String(err?.message ?? "").toLowerCase();
+    return msg.includes("could not find the function") && msg.includes(functionName.toLowerCase());
+  };
+
+  const aggregateByProduct = (items: Array<{ productoId: string; cantidad: number }>) => {
+    const map = new Map<string, number>();
+    for (const item of items) {
+      map.set(item.productoId, (map.get(item.productoId) ?? 0) + Number(item.cantidad));
+    }
+    return map;
+  };
+
+  const applyStockDelta = async (deltaMap: Map<string, number>) => {
+    const productIds = Array.from(deltaMap.keys());
+    if (!productIds.length) {
+      return { ok: true as const };
+    }
+
+    const { data: stockRows, error: stockError } = await supabase
+      .from("productos")
+      .select("id, stockActual")
+      .in("id", productIds);
+
+    if (stockError) {
+      return { ok: false as const, message: `No se pudo leer stock: ${stockError.message}` };
+    }
+
+    const stockMap = new Map((stockRows ?? []).map((row: any) => [row.id, Number(row.stockActual)]));
+    for (const [productoId, delta] of deltaMap.entries()) {
+      const current = stockMap.get(productoId);
+      if (current === undefined) {
+        return { ok: false as const, message: `Producto no encontrado: ${productoId}` };
+      }
+      if (current + delta < 0) {
+        return { ok: false as const, message: `Stock insuficiente para producto ${productoId}.` };
+      }
+    }
+
+    for (const [productoId, delta] of deltaMap.entries()) {
+      if (delta === 0) {
+        continue;
+      }
+      const current = stockMap.get(productoId) ?? 0;
+      const { error: updateErr } = await supabase
+        .from("productos")
+        .update({ stockActual: current + delta })
+        .eq("id", productoId);
+
+      if (updateErr) {
+        return { ok: false as const, message: `No se pudo actualizar stock: ${updateErr.message}` };
+      }
+    }
+
+    return { ok: true as const };
+  };
+
   const openEditModal = async (row: MovimientoResumenRow) => {
     const { data, error } = await supabase
       .from("movimientoDetalle")
@@ -181,6 +247,14 @@ function MovimientosView() {
     });
   };
 
+  const onHistoryRowClicked = (event: RowClickedEvent<MovimientoResumenRow>) => {
+    const row = event.data;
+    if (!row) {
+      return;
+    }
+    void openEditModal(row);
+  };
+
   const historyColumns = useMemo<ColDef<MovimientoResumenRow>[]>(
     () => [
       { field: "fecha", headerName: "Fecha", width: 130 },
@@ -191,43 +265,9 @@ function MovimientosView() {
         headerName: "Total",
         width: 140,
         valueFormatter: (p) => `L ${Number(p.value).toFixed(2)}`
-      },
-      {
-        headerName: "Acciones",
-        width: 230,
-        sortable: false,
-        filter: false,
-        resizable: false,
-        cellRenderer: (p: any) => {
-          const row = p.data as MovimientoResumenRow | undefined;
-          if (!row) {
-            return null;
-          }
-
-          return (
-            <div className="flex h-full items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  void openEditModal(row);
-                }}
-                className="rounded-lg border border-slate-300 px-2 py-1 text-xs font-semibold"
-              >
-                Editar
-              </button>
-              <button
-                type="button"
-                onClick={() => setDeleteConfirm({ movimientoId: row.id, confirmText: "" })}
-                className="rounded-lg border border-rose-300 px-2 py-1 text-xs font-semibold text-rose-700"
-              >
-                Eliminar
-              </button>
-            </div>
-          );
-        }
       }
     ],
-    [products]
+    []
   );
 
   const addDetail = () => {
@@ -355,8 +395,77 @@ function MovimientosView() {
       });
 
       if (error) {
-        setMessage(`No se pudo editar movimiento: ${error.message}`);
-        return;
+        if (!isMissingFunctionError(error, "actualizar_movimiento_entrada")) {
+          setMessage(`No se pudo editar movimiento: ${error.message}`);
+          return;
+        }
+
+        const { data: oldDetails, error: oldErr } = await supabase
+          .from("movimientoDetalle")
+          .select("id, movimientoId, productoId, cantidad, costoUnitario, subtotal")
+          .eq("movimientoId", editModal.movimientoId);
+
+        if (oldErr) {
+          setMessage(`No se pudo editar movimiento: ${oldErr.message}`);
+          return;
+        }
+
+        const oldAgg = aggregateByProduct((oldDetails ?? []) as MovimientoDetalleRaw[]);
+        const newAgg = aggregateByProduct(detallesPayload);
+        const allIds = new Set([...Array.from(oldAgg.keys()), ...Array.from(newAgg.keys())]);
+        const deltaMap = new Map<string, number>();
+        for (const id of allIds) {
+          const delta = (newAgg.get(id) ?? 0) - (oldAgg.get(id) ?? 0);
+          deltaMap.set(id, delta);
+        }
+
+        const stockResult = await applyStockDelta(deltaMap);
+        if (!stockResult.ok) {
+          setMessage(`No se pudo editar movimiento: ${stockResult.message}`);
+          return;
+        }
+
+        const { error: deleteOldErr } = await supabase
+          .from("movimientoDetalle")
+          .delete()
+          .eq("movimientoId", editModal.movimientoId);
+
+        if (deleteOldErr) {
+          setMessage(`No se pudo editar movimiento: ${deleteOldErr.message}`);
+          return;
+        }
+
+        const insertPayload = detallesPayload.map((d) => ({
+          movimientoId: editModal.movimientoId,
+          productoId: d.productoId,
+          cantidad: d.cantidad,
+          costoUnitario: d.costoUnitario,
+          subtotal: d.subtotal
+        }));
+
+        const { error: insertErr } = await supabase
+          .from("movimientoDetalle")
+          .insert(insertPayload);
+
+        if (insertErr) {
+          setMessage(`No se pudo editar movimiento: ${insertErr.message}`);
+          return;
+        }
+
+        const totalMovimiento = detallesPayload.reduce((acc, d) => acc + d.subtotal, 0);
+        const { error: updateResumenErr } = await supabase
+          .from("movimientoResumen")
+          .update({
+            proveedor: editModal.proveedor.trim() || null,
+            observacion: editModal.observacion.trim() || null,
+            totalMovimiento: Number(totalMovimiento.toFixed(2))
+          })
+          .eq("id", editModal.movimientoId);
+
+        if (updateResumenErr) {
+          setMessage(`No se pudo editar movimiento: ${updateResumenErr.message}`);
+          return;
+        }
       }
 
       setEditModal(null);
@@ -385,11 +494,46 @@ function MovimientosView() {
       });
 
       if (error) {
-        setMessage(`No se pudo anular movimiento: ${error.message}`);
-        return;
+        if (!isMissingFunctionError(error, "anular_movimiento_entrada")) {
+          setMessage(`No se pudo anular movimiento: ${error.message}`);
+          return;
+        }
+
+        const { data: details, error: detailsErr } = await supabase
+          .from("movimientoDetalle")
+          .select("productoId, cantidad")
+          .eq("movimientoId", deleteConfirm.movimientoId);
+
+        if (detailsErr) {
+          setMessage(`No se pudo anular movimiento: ${detailsErr.message}`);
+          return;
+        }
+
+        const agg = aggregateByProduct((details ?? []) as Array<{ productoId: string; cantidad: number }>);
+        const stockDelta = new Map<string, number>();
+        for (const [productoId, qty] of agg.entries()) {
+          stockDelta.set(productoId, -qty);
+        }
+
+        const stockResult = await applyStockDelta(stockDelta);
+        if (!stockResult.ok) {
+          setMessage(`No se pudo anular movimiento: ${stockResult.message}`);
+          return;
+        }
+
+        const { error: deleteErr } = await supabase
+          .from("movimientoResumen")
+          .delete()
+          .eq("id", deleteConfirm.movimientoId);
+
+        if (deleteErr) {
+          setMessage(`No se pudo anular movimiento: ${deleteErr.message}`);
+          return;
+        }
       }
 
       setDeleteConfirm(null);
+      setEditModal(null);
       setMessage("Movimiento anulado y stock revertido correctamente.");
       await loadHistory();
       await loadProducts();
@@ -518,6 +662,7 @@ function MovimientosView() {
                 rowData={historyRows}
                 columnDefs={historyColumns}
                 defaultColDef={defaultColDef}
+                onRowClicked={onHistoryRowClicked}
                 rowHeight={50}
                 suppressDragLeaveHidesColumns
                 suppressMovableColumns
@@ -577,7 +722,16 @@ function MovimientosView() {
       {editModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 px-4">
           <div className="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-xl">
-            <h3 className="text-lg font-bold text-slate-900">Editar movimiento</h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-lg font-bold text-slate-900">Editar movimiento</h3>
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm({ movimientoId: editModal.movimientoId, confirmText: "" })}
+                className="rounded-xl border border-rose-300 px-3 py-2 text-xs font-semibold text-rose-700"
+              >
+                Eliminar movimiento
+              </button>
+            </div>
             <div className="mt-3 grid gap-2 md:grid-cols-2">
               <input
                 value={editModal.proveedor}
