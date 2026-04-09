@@ -13,6 +13,7 @@
 body {
   margin: 0;
   background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+  overflow-x: hidden;
 }
 
 #root {
@@ -31,6 +32,7 @@ body {
 
 .mobile-shell {
   min-height: 100dvh;
+  overflow-x: hidden;
 }
 
 .phone-container {
@@ -140,13 +142,13 @@ body {
 }
 
 body.theme-dark {
-  background: linear-gradient(180deg, #020617 0%, #0f172a 100%);
-  color: #e2e8f0;
+  background: #000;
+  color: #f8fafc;
 }
 
 body.theme-dark .mobile-shell {
-  background: transparent !important;
-  color: #e2e8f0 !important;
+  background: #000 !important;
+  color: #f8fafc !important;
 }
 
 body.theme-dark .panel,
@@ -154,31 +156,55 @@ body.theme-dark .module-tab,
 body.theme-dark .nav-icon-btn,
 body.theme-dark .bg-white,
 body.theme-dark .bg-white\/95 {
-  background: #0f172a !important;
-  color: #e2e8f0 !important;
-  border-color: #334155 !important;
+  background: #000 !important;
+  color: #f8fafc !important;
+  border-color: #3f3f46 !important;
+  box-shadow: none !important;
 }
 
 body.theme-dark .bg-slate-100,
 body.theme-dark .bg-slate-50 {
-  background: #1e293b !important;
-  color: #e2e8f0 !important;
+  background: #111 !important;
+  color: #f1f5f9 !important;
 }
 
 body.theme-dark .text-slate-900,
 body.theme-dark .text-slate-700,
 body.theme-dark .text-slate-600,
 body.theme-dark .text-slate-500 {
-  color: #cbd5e1 !important;
+  color: #e2e8f0 !important;
+}
+
+body.theme-dark input,
+body.theme-dark select,
+body.theme-dark textarea {
+  background: #000 !important;
+  color: #f8fafc !important;
+  border-color: #3f3f46 !important;
+}
+
+body.theme-dark input::placeholder,
+body.theme-dark textarea::placeholder {
+  color: #a1a1aa !important;
+}
+
+body.theme-dark .border-slate-300,
+body.theme-dark .border-slate-200 {
+  border-color: #3f3f46 !important;
+}
+
+body.theme-dark .bg-slate-100 {
+  background: #111 !important;
 }
 
 body.theme-dark .ag-theme-quartz {
-  --ag-background-color: #0f172a;
-  --ag-foreground-color: #e2e8f0;
-  --ag-border-color: #334155;
-  --ag-header-background-color: #1e293b;
-  --ag-header-foreground-color: #e2e8f0;
-  --ag-odd-row-background-color: #0b1220;
+  --ag-background-color: #000;
+  --ag-foreground-color: #f8fafc;
+  --ag-border-color: #3f3f46;
+  --ag-header-background-color: #111;
+  --ag-header-foreground-color: #f8fafc;
+  --ag-odd-row-background-color: #050505;
+  --ag-row-hover-color: #18181b;
 }
 
 @media (max-width: 640px) {

@@ -13,6 +13,8 @@ import cartIcon from "./img/cart.png";
 import inventoryIcon from "./img/inventory.png";
 import movementIcon from "./img/movement.png";
 import saleIcon from "./img/sale.png";
+import dmIcon from "./img/dm.png";
+import wmIcon from "./img/wm.png";
 
 const navItems = [
   { to: "/pos", label: "POS", icon: cartIcon },
@@ -26,6 +28,7 @@ function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   useEffect(() => {
     const saved = window.localStorage.getItem("invfac.theme");
@@ -39,6 +42,10 @@ function App() {
     document.body.classList.toggle("theme-light", theme === "light");
     window.localStorage.setItem("invfac.theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    setShowUserMenu(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -69,6 +76,7 @@ function App() {
 
   const toggleTheme = () => {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+    setShowUserMenu(false);
   };
 
   if (!isSupabaseConfigured) {
@@ -106,25 +114,40 @@ function App() {
     <div className="mobile-shell bg-slate-100 text-slate-900">
       <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="phone-container px-3 py-3 sm:px-6">
-          <div className="flex items-center gap-2">
-            <h1 className="mr-auto text-xl font-bold text-brand-900">InvFac POS</h1>
-            <span className="hidden rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600 sm:inline-block">
-            {session.user.email}
-            </span>
+          <div className="relative flex min-w-0 items-center gap-2">
+            <h1 className="mr-auto text-xl font-extrabold tracking-tight text-brand-900">Pulperia</h1>
+
             <button
               type="button"
-              onClick={toggleTheme}
-              className="whitespace-nowrap rounded-xl border border-slate-300 bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700"
+              onClick={() => setShowUserMenu((prev) => !prev)}
+              className="max-w-[128px] truncate rounded-xl border border-slate-300 bg-slate-100 px-2.5 py-2 text-xs font-semibold text-slate-700 sm:max-w-[210px] sm:px-3 sm:text-sm"
             >
-              {theme === "dark" ? "Modo claro" : "Modo oscuro"}
+              {session.user.email}
             </button>
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="whitespace-nowrap rounded-xl border border-rose-300 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700"
-            >
-              Cerrar sesion
-            </button>
+
+            {showUserMenu ? (
+              <div className="absolute right-0 top-12 z-40 w-56 rounded-xl border border-slate-300 bg-white p-2 shadow-lg">
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                >
+                  <img
+                    src={theme === "dark" ? wmIcon : dmIcon}
+                    alt={theme === "dark" ? "Modo claro" : "Modo oscuro"}
+                    className="h-5 w-5 object-contain"
+                  />
+                  {theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-rose-700 hover:bg-rose-50"
+                >
+                  Cerrar sesion
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       </header>

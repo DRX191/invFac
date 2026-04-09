@@ -349,7 +349,7 @@ function InventoryView() {
                 onClick={() => handleSelectMode("catalog")}
                 className="module-tab"
               >
-                Visualizar productos existentes
+                Inventario de productos
               </button>
             </div>
           </div>

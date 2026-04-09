@@ -8,6 +8,16 @@ interface EntryRow extends CartRow {
   costoUnitario: number;
 }
 
+interface MovimientoResumenRow {
+  id: string;
+  fecha: string;
+  proveedor: string | null;
+  observacion: string | null;
+  totalMovimiento: number;
+}
+
+type MovimientoMode = "manage" | "history";
+
 function MovimientosView() {
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -16,7 +26,10 @@ function MovimientosView() {
   const [proveedor, setProveedor] = useState("");
   const [observacion, setObservacion] = useState("");
   const [rows, setRows] = useState<EntryRow[]>([]);
+  const [historyRows, setHistoryRows] = useState<MovimientoResumenRow[]>([]);
   const [message, setMessage] = useState("Registra compras de entrada al inventario.");
+  const [mode, setMode] = useState<MovimientoMode | null>(null);
+  const [showModeModal, setShowModeModal] = useState(true);
 
   const totalMovimiento = useMemo(
     () => rows.reduce((acc, row) => acc + row.subtotal, 0),
@@ -38,7 +51,34 @@ function MovimientosView() {
       setProducts((data ?? []) as Product[]);
     };
 
+    const loadHistory = async () => {
+      const { data, error } = await supabase
+        .from("movimientoResumen")
+        .select("id, fecha, proveedor, observacion, totalMovimiento")
+        .order("fecha", { ascending: false })
+        .limit(150);
+
+      if (error) {
+        setMessage(`No se pudo cargar historial: ${error.message}`);
+        return;
+      }
+
+      const formatted = (data ?? []).map((item: any) => {
+        const dt = new Date(item.fecha);
+        const day = String(dt.getDate()).padStart(2, "0");
+        const month = String(dt.getMonth() + 1).padStart(2, "0");
+        const year = dt.getFullYear();
+        return {
+          ...item,
+          fecha: `${day}-${month}-${year}`
+        };
+      });
+
+      setHistoryRows(formatted as MovimientoResumenRow[]);
+    };
+
     void loadProducts();
+    void loadHistory();
   }, []);
 
   const columns = useMemo<ColDef<EntryRow>[]>(
@@ -71,6 +111,21 @@ function MovimientosView() {
       suppressMovable: true,
       suppressHeaderMenuButton: true
     }),
+    []
+  );
+
+  const historyColumns = useMemo<ColDef<MovimientoResumenRow>[]>(
+    () => [
+      { field: "fecha", headerName: "Fecha", width: 130 },
+      { field: "proveedor", headerName: "Proveedor", width: 210 },
+      { field: "observacion", headerName: "Observacion", width: 260 },
+      {
+        field: "totalMovimiento",
+        headerName: "Total",
+        width: 140,
+        valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
+      }
+    ],
     []
   );
 
@@ -159,97 +214,201 @@ function MovimientosView() {
     setProveedor("");
     setObservacion("");
     setMessage("Movimiento de entrada registrado y stock actualizado.");
+
+    const { data } = await supabase
+      .from("movimientoResumen")
+      .select("id, fecha, proveedor, observacion, totalMovimiento")
+      .order("fecha", { ascending: false })
+      .limit(150);
+
+    const formatted = (data ?? []).map((item: any) => {
+      const dt = new Date(item.fecha);
+      const day = String(dt.getDate()).padStart(2, "0");
+      const month = String(dt.getMonth() + 1).padStart(2, "0");
+      const year = dt.getFullYear();
+      return {
+        ...item,
+        fecha: `${day}-${month}-${year}`
+      };
+    });
+    setHistoryRows(formatted as MovimientoResumenRow[]);
+  };
+
+  const renderModeContent = () => {
+    if (mode === "manage") {
+      return (
+        <>
+          <div className="panel grid grid-cols-2 gap-2 md:grid-cols-6">
+            <div className="col-span-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowModeModal(true)}
+                className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold"
+              >
+                Cambiar modulo
+              </button>
+            </div>
+            <select
+              value={selectedId}
+              onChange={(e) => setSelectedId(e.target.value)}
+              className="col-span-2 rounded-xl border border-slate-300 px-3 py-2.5 text-sm md:col-span-3"
+            >
+              <option value="">Selecciona producto</option>
+              {products.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.description} ({product.barcode})
+                </option>
+              ))}
+            </select>
+
+            <input
+              value={cantidad}
+              onChange={(e) => setCantidad(e.target.value)}
+              type="number"
+              min="1"
+              className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
+              placeholder="Cantidad"
+            />
+
+            <input
+              value={costoUnitario}
+              onChange={(e) => setCostoUnitario(e.target.value)}
+              type="number"
+              min="0"
+              step="0.01"
+              className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
+              placeholder="Costo unitario"
+            />
+
+            <input
+              value={proveedor}
+              onChange={(e) => setProveedor(e.target.value)}
+              className="col-span-2 rounded-xl border border-slate-300 px-3 py-2.5 text-sm md:col-span-2"
+              placeholder="Proveedor (opcional)"
+            />
+
+            <button
+              type="button"
+              onClick={addDetail}
+              className="col-span-2 rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-bold text-white md:col-span-1"
+            >
+              Agregar
+            </button>
+
+            <input
+              value={observacion}
+              onChange={(e) => setObservacion(e.target.value)}
+              className="col-span-2 rounded-xl border border-slate-300 px-3 py-2.5 text-sm md:col-span-5"
+              placeholder="Observacion"
+            />
+
+            <button
+              type="button"
+              onClick={guardarMovimiento}
+              className="col-span-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white md:col-span-1"
+            >
+              Guardar movimiento
+            </button>
+          </div>
+
+          <div className="panel">
+            <p className="grid-title">Detalle del movimiento</p>
+            <div className="grid-wrap">
+            <div className="ag-theme-quartz h-[27dvh] min-h-[170px] min-w-[760px] w-full">
+              <AgGridReact<EntryRow>
+                rowData={rows}
+                columnDefs={columns}
+                defaultColDef={defaultColDef}
+                rowHeight={50}
+                suppressDragLeaveHidesColumns
+                suppressMovableColumns
+              />
+            </div>
+            </div>
+            <p className="mt-3 text-lg font-bold">Total movimiento: ${totalMovimiento.toFixed(2)}</p>
+          </div>
+        </>
+      );
+    }
+
+    if (mode === "history") {
+      return (
+        <div className="panel">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="grid-title mb-0">Movimientos registrados</p>
+            <button
+              type="button"
+              onClick={() => setShowModeModal(true)}
+              className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold"
+            >
+              Cambiar modulo
+            </button>
+          </div>
+          <div className="grid-wrap">
+            <div className="ag-theme-quartz h-[52dvh] min-h-[280px] min-w-[740px] w-full">
+              <AgGridReact<MovimientoResumenRow>
+                rowData={historyRows}
+                columnDefs={historyColumns}
+                defaultColDef={defaultColDef}
+                rowHeight={50}
+                suppressDragLeaveHidesColumns
+                suppressMovableColumns
+                overlayNoRowsTemplate="No hay movimientos registrados."
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
   };
 
   return (
     <section className="space-y-3">
-      <header>
-        <h2 className="text-2xl font-bold">Movimientos de Entrada</h2>
-        <p className="text-sm text-slate-600">Registra compras para incrementar stock.</p>
-      </header>
+      {!showModeModal ? (
+        <header>
+          <h2 className="text-2xl font-bold">Movimientos de Entrada</h2>
+          <p className="text-sm text-slate-600">Registra compras para incrementar stock.</p>
+        </header>
+      ) : null}
 
-      <div className="panel grid grid-cols-2 gap-2 md:grid-cols-6">
-        <select
-          value={selectedId}
-          onChange={(e) => setSelectedId(e.target.value)}
-          className="col-span-2 rounded-xl border border-slate-300 px-3 py-2.5 text-sm md:col-span-3"
-        >
-          <option value="">Selecciona producto</option>
-          {products.map((product) => (
-            <option key={product.id} value={product.id}>
-              {product.description} ({product.barcode})
-            </option>
-          ))}
-        </select>
-
-        <input
-          value={cantidad}
-          onChange={(e) => setCantidad(e.target.value)}
-          type="number"
-          min="1"
-          className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
-          placeholder="Cantidad"
-        />
-
-        <input
-          value={costoUnitario}
-          onChange={(e) => setCostoUnitario(e.target.value)}
-          type="number"
-          min="0"
-          step="0.01"
-          className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
-          placeholder="Costo unitario"
-        />
-
-        <input
-          value={proveedor}
-          onChange={(e) => setProveedor(e.target.value)}
-          className="col-span-2 rounded-xl border border-slate-300 px-3 py-2.5 text-sm md:col-span-2"
-          placeholder="Proveedor (opcional)"
-        />
-
-        <button
-          type="button"
-          onClick={addDetail}
-          className="col-span-2 rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-bold text-white md:col-span-1"
-        >
-          Agregar
-        </button>
-
-        <input
-          value={observacion}
-          onChange={(e) => setObservacion(e.target.value)}
-          className="col-span-2 rounded-xl border border-slate-300 px-3 py-2.5 text-sm md:col-span-5"
-          placeholder="Observacion"
-        />
-
-        <button
-          type="button"
-          onClick={guardarMovimiento}
-          className="col-span-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white md:col-span-1"
-        >
-          Guardar movimiento
-        </button>
-      </div>
-
-      <div className="panel">
-        <p className="grid-title">Detalle del movimiento</p>
-        <div className="grid-wrap">
-        <div className="ag-theme-quartz h-[27dvh] min-h-[170px] min-w-[760px] w-full">
-          <AgGridReact<EntryRow>
-            rowData={rows}
-            columnDefs={columns}
-            defaultColDef={defaultColDef}
-            rowHeight={50}
-            suppressDragLeaveHidesColumns
-            suppressMovableColumns
-          />
+      {showModeModal ? (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/45 px-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+            <h3 className="text-lg font-bold text-slate-900">Movimientos</h3>
+            <p className="mt-1 text-sm text-slate-600">Selecciona el modulo que deseas abrir.</p>
+            <div className="mt-4 grid gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("manage");
+                  setShowModeModal(false);
+                }}
+                className="module-tab active"
+              >
+                Agregar / Editar movimientos
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("history");
+                  setShowModeModal(false);
+                }}
+                className="module-tab"
+              >
+                Inventario de movimientos
+              </button>
+            </div>
+          </div>
         </div>
-        </div>
-        <p className="mt-3 text-lg font-bold">Total movimiento: ${totalMovimiento.toFixed(2)}</p>
-      </div>
+      ) : null}
 
-      <p className="rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">{message}</p>
+      {!showModeModal ? renderModeContent() : null}
+
+      {!showModeModal ? (
+        <p className="rounded-xl bg-slate-100 px-3 py-2 text-sm text-slate-700">{message}</p>
+      ) : null}
     </section>
   );
 }
