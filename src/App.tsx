@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import PosView from "./views/PosView";
 import InventoryView from "./views/InventoryView";
 import MovimientosView from "./views/MovimientosView";
@@ -25,6 +25,7 @@ const navItems = [
 
 function App() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [session, setSession] = useState<Session | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -170,6 +171,16 @@ function App() {
               <Link
                 key={item.to}
                 to={item.to}
+                onClick={(e) => {
+                  if (!active) {
+                    return;
+                  }
+                  e.preventDefault();
+                  navigate(item.to, {
+                    replace: false,
+                    state: { openMenuAt: Date.now() }
+                  });
+                }}
                 aria-label={item.label}
                 className={`nav-icon-btn ${
                   active

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "@ag-grid-community/react";
 import type { ColDef } from "@ag-grid-community/core";
+import { useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import type { CartRow, Product } from "../types/models";
 
@@ -19,6 +20,7 @@ interface MovimientoResumenRow {
 type MovimientoMode = "manage" | "history";
 
 function MovimientosView() {
+  const location = useLocation();
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [cantidad, setCantidad] = useState("");
@@ -80,6 +82,14 @@ function MovimientosView() {
     void loadProducts();
     void loadHistory();
   }, []);
+
+  useEffect(() => {
+    const marker = (location.state as { openMenuAt?: number } | null)?.openMenuAt;
+    if (!marker) {
+      return;
+    }
+    setShowModeModal(true);
+  }, [location.key]);
 
   const columns = useMemo<ColDef<EntryRow>[]>(
     () => [
@@ -239,19 +249,10 @@ function MovimientosView() {
       return (
         <>
           <div className="panel grid grid-cols-2 gap-2 md:grid-cols-6">
-            <div className="col-span-2 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowModeModal(true)}
-                className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold"
-              >
-                Cambiar modulo
-              </button>
-            </div>
             <select
               value={selectedId}
               onChange={(e) => setSelectedId(e.target.value)}
-              className="col-span-2 rounded-xl border border-slate-300 px-3 py-2.5 text-sm md:col-span-3"
+              className="col-span-2 rounded-xl border border-slate-300 px-3 py-2.5 text-sm md:col-span-4"
             >
               <option value="">Selecciona producto</option>
               {products.map((product) => (
@@ -356,13 +357,6 @@ function MovimientosView() {
         <div className="panel">
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className="grid-title mb-0">Movimientos realizados</p>
-            <button
-              type="button"
-              onClick={() => setShowModeModal(true)}
-              className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold"
-            >
-              Cambiar modulo
-            </button>
           </div>
           <div className="grid-wrap">
             <div className="ag-theme-quartz h-[52dvh] min-h-[280px] min-w-[740px] w-full">

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AgGridReact } from "@ag-grid-community/react";
 import type { ColDef, RowClickedEvent } from "@ag-grid-community/core";
+import { useLocation } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import type { Product } from "../types/models";
 import BarcodeScanner from "../components/BarcodeScanner";
@@ -30,6 +31,7 @@ const defaultForm: ProductForm = {
 };
 
 function InventoryView() {
+  const location = useLocation();
   const [rows, setRows] = useState<Product[]>([]);
   const [form, setForm] = useState<ProductForm>(defaultForm);
   const [message, setMessage] = useState("Cargando inventario...");
@@ -68,6 +70,14 @@ function InventoryView() {
   useEffect(() => {
     void loadProducts();
   }, []);
+
+  useEffect(() => {
+    const marker = (location.state as { openMenuAt?: number } | null)?.openMenuAt;
+    if (!marker) {
+      return;
+    }
+    setShowModeModal(true);
+  }, [location.key]);
 
   const catalogColumns = useMemo<ColDef<Product>[]>(
     () => [
@@ -221,15 +231,6 @@ function InventoryView() {
       return (
         <>
           <div className="panel">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={() => setShowModeModal(true)}
-                className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold"
-              >
-                Cambiar modulo
-              </button>
-            </div>
             <BarcodeScanner onScan={handleScanBarcode} instanceId="inventory-barcode-scanner" compact />
           </div>
 
@@ -292,13 +293,6 @@ function InventoryView() {
         <div className="panel">
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className="grid-title mb-0">Inventario de productos</p>
-            <button
-              type="button"
-              onClick={() => setShowModeModal(true)}
-              className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold"
-            >
-              Cambiar modulo
-            </button>
           </div>
           <div className="grid-wrap">
           <div className="ag-theme-quartz h-[54dvh] min-h-[300px] min-w-[740px] w-full">
