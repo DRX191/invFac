@@ -208,5 +208,191 @@ begin
 end;
 $$;
 
+create or replace function public.anular_movimiento_entrada(
+  p_movimiento_id uuid
+)
+returns void
+language plpgsql
+security definer
+as $$
+declare
+  v_exists uuid;
+  v_item record;
+  v_stock int;
+begin
+  select id into v_exists
+  from public."movimientoResumen"
+  where id = p_movimiento_id;
+
+  if v_exists is null then
+    raise exception 'Movimiento no encontrado.';
+  end if;
+
+  for v_item in
+    select "productoId" as producto_id, sum(cantidad)::int as cantidad_total
+    from public."movimientoDetalle"
+    where "movimientoId" = p_movimiento_id
+    group by "productoId"
+  loop
+    select "stockActual" into v_stock
+    from public.productos
+    where id = v_item.producto_id
+    for update;
+
+    if v_stock is null then
+      raise exception 'Producto % no existe.', v_item.producto_id;
+    end if;
+
+    if v_stock < v_item.cantidad_total then
+      raise exception 'No se puede anular: stock insuficiente para producto %.', v_item.producto_id;
+    end if;
+  end loop;
+
+  for v_item in
+    select "productoId" as producto_id, sum(cantidad)::int as cantidad_total
+    from public."movimientoDetalle"
+    where "movimientoId" = p_movimiento_id
+    group by "productoId"
+  loop
+    update public.productos
+    set "stockActual" = "stockActual" - v_item.cantidad_total
+    where id = v_item.producto_id;
+  end loop;
+
+  delete from public."movimientoResumen"
+  where id = p_movimiento_id;
+end;
+$$;
+
+create or replace function public.actualizar_movimiento_entrada(
+  p_movimiento_id uuid,
+  p_proveedor text,
+  p_observacion text,
+  p_detalles jsonb
+)
+returns void
+language plpgsql
+security definer
+as $$
+declare
+  v_exists uuid;
+  v_item jsonb;
+  v_delta record;
+  v_stock int;
+begin
+  select id into v_exists
+  from public."movimientoResumen"
+  where id = p_movimiento_id;
+
+  if v_exists is null then
+    raise exception 'Movimiento no encontrado.';
+  end if;
+
+  create temporary table tmp_mov_detalles (
+    producto_id uuid not null,
+    cantidad int not null,
+    costo_unitario numeric(12,2) not null,
+    subtotal numeric(14,2) not null
+  ) on commit drop;
+
+  for v_item in select * from jsonb_array_elements(p_detalles)
+  loop
+    insert into tmp_mov_detalles (producto_id, cantidad, costo_unitario, subtotal)
+    values (
+      (v_item->>'productoId')::uuid,
+      (v_item->>'cantidad')::int,
+      (v_item->>'costoUnitario')::numeric,
+      (v_item->>'subtotal')::numeric
+    );
+  end loop;
+
+  if not exists (select 1 from tmp_mov_detalles) then
+    raise exception 'Debes enviar al menos un detalle.';
+  end if;
+
+  for v_delta in
+    with old_q as (
+      select "productoId" as producto_id, sum(cantidad)::int as qty
+      from public."movimientoDetalle"
+      where "movimientoId" = p_movimiento_id
+      group by "productoId"
+    ),
+    new_q as (
+      select producto_id, sum(cantidad)::int as qty
+      from tmp_mov_detalles
+      group by producto_id
+    )
+    select
+      coalesce(n.producto_id, o.producto_id) as producto_id,
+      coalesce(n.qty, 0) - coalesce(o.qty, 0) as delta_qty
+    from old_q o
+    full outer join new_q n on n.producto_id = o.producto_id
+  loop
+    if v_delta.delta_qty < 0 then
+      select "stockActual" into v_stock
+      from public.productos
+      where id = v_delta.producto_id
+      for update;
+
+      if v_stock is null then
+        raise exception 'Producto % no existe.', v_delta.producto_id;
+      end if;
+
+      if v_stock < abs(v_delta.delta_qty) then
+        raise exception 'No se puede actualizar: stock insuficiente para producto %.', v_delta.producto_id;
+      end if;
+    end if;
+  end loop;
+
+  for v_delta in
+    with old_q as (
+      select "productoId" as producto_id, sum(cantidad)::int as qty
+      from public."movimientoDetalle"
+      where "movimientoId" = p_movimiento_id
+      group by "productoId"
+    ),
+    new_q as (
+      select producto_id, sum(cantidad)::int as qty
+      from tmp_mov_detalles
+      group by producto_id
+    )
+    select
+      coalesce(n.producto_id, o.producto_id) as producto_id,
+      coalesce(n.qty, 0) - coalesce(o.qty, 0) as delta_qty
+    from old_q o
+    full outer join new_q n on n.producto_id = o.producto_id
+  loop
+    if v_delta.delta_qty <> 0 then
+      update public.productos
+      set "stockActual" = "stockActual" + v_delta.delta_qty
+      where id = v_delta.producto_id;
+    end if;
+  end loop;
+
+  delete from public."movimientoDetalle"
+  where "movimientoId" = p_movimiento_id;
+
+  insert into public."movimientoDetalle" (
+    "movimientoId", "productoId", cantidad, "costoUnitario", subtotal
+  )
+  select
+    p_movimiento_id,
+    producto_id,
+    cantidad,
+    costo_unitario,
+    subtotal
+  from tmp_mov_detalles;
+
+  update public."movimientoResumen"
+  set
+    proveedor = p_proveedor,
+    observacion = p_observacion,
+    "totalMovimiento" = (select coalesce(sum(subtotal), 0) from tmp_mov_detalles)
+  where id = p_movimiento_id;
+end;
+$$;
+
 grant execute on function public.registrar_venta_con_detalles(uuid, text, numeric, jsonb) to authenticated;
 grant execute on function public.registrar_movimiento_entrada(uuid, text, text, numeric, jsonb) to authenticated;
+grant execute on function public.anular_movimiento_entrada(uuid) to authenticated;
+grant execute on function public.actualizar_movimiento_entrada(uuid, text, text, jsonb) to authenticated;
