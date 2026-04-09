@@ -90,13 +90,13 @@ function MovimientosView() {
         field: "costoUnitario",
         headerName: "Costo U.",
         width: 140,
-        valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
+        valueFormatter: (p) => `L ${Number(p.value).toFixed(2)}`
       },
       {
         field: "subtotal",
         headerName: "Subtotal",
         width: 140,
-        valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
+        valueFormatter: (p) => `L ${Number(p.value).toFixed(2)}`
       }
     ],
     []
@@ -123,7 +123,7 @@ function MovimientosView() {
         field: "totalMovimiento",
         headerName: "Total",
         width: 140,
-        valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
+        valueFormatter: (p) => `L ${Number(p.value).toFixed(2)}`
       }
     ],
     []
@@ -345,7 +345,7 @@ function MovimientosView() {
               />
             </div>
             </div>
-            <p className="mt-3 text-lg font-bold">Total movimiento: ${totalMovimiento.toFixed(2)}</p>
+            <p className="mt-3 text-lg font-bold">Total movimiento: L {totalMovimiento.toFixed(2)}</p>
           </div>
         </>
       );

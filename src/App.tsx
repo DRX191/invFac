@@ -177,7 +177,11 @@ function App() {
                     : ""
                 }`}
               >
-                <img src={item.icon} alt={item.label} className="h-7 w-7 object-contain" />
+                <img
+                  src={item.icon}
+                  alt={item.label}
+                  className={`h-7 w-7 object-contain ${item.to === "/pos" ? "cart-nav-icon" : ""}`}
+                />
               </Link>
             );
           })}

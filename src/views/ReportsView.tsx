@@ -12,6 +12,7 @@ interface ReportRow {
 }
 
 type Period = "dia" | "semana" | "mes" | "anio";
+type ReportMode = "predeterminado" | "ajustado";
 
 const periodOptions: Array<{ value: Period; label: string }> = [
   { value: "dia", label: "Diario" },
@@ -42,11 +43,17 @@ function getFromDate(period: Period) {
 function ReportsView() {
   const [rows, setRows] = useState<ReportRow[]>([]);
   const [users, setUsers] = useState<string[]>([]);
+  const [reportMode, setReportMode] = useState<ReportMode>("predeterminado");
   const [period, setPeriod] = useState<Period>("dia");
   const [selectedUser, setSelectedUser] = useState<string>("ALL");
-  const [customMode, setCustomMode] = useState(false);
-  const [customFrom, setCustomFrom] = useState("");
-  const [customTo, setCustomTo] = useState("");
+  const [customFrom, setCustomFrom] = useState<string>(() => {
+    const now = new Date();
+    return now.toISOString().slice(0, 10);
+  });
+  const [customTo, setCustomTo] = useState<string>(() => {
+    const now = new Date();
+    return now.toISOString().slice(0, 10);
+  });
   const [message, setMessage] = useState("Consulta ventas por periodo.");
 
   const columns = useMemo<ColDef<ReportRow>[]>(
@@ -59,7 +66,7 @@ function ReportsView() {
         field: "total",
         headerName: "Total",
         width: 140,
-        valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
+        valueFormatter: (p) => `L ${Number(p.value).toFixed(2)}`
       }
     ],
     []
@@ -161,7 +168,7 @@ function ReportsView() {
     setUsers(uniques);
   };
 
-  const runAutoReport = async (nextPeriod: Period, nextUser: string) => {
+  const runPresetReport = async (nextPeriod: Period, nextUser: string) => {
     await applyReportQuery({
       periodValue: nextPeriod,
       userValue: nextUser,
@@ -191,15 +198,15 @@ function ReportsView() {
 
   useEffect(() => {
     void loadUsers();
-    void runAutoReport(period, selectedUser);
+    void runPresetReport(period, selectedUser);
   }, []);
 
   useEffect(() => {
-    if (customMode) {
+    if (reportMode !== "predeterminado") {
       return;
     }
-    void runAutoReport(period, selectedUser);
-  }, [period, selectedUser, customMode]);
+    void runPresetReport(period, selectedUser);
+  }, [period, selectedUser, reportMode]);
 
   return (
     <section className="space-y-3">
@@ -208,18 +215,45 @@ function ReportsView() {
         <p className="text-sm text-slate-600">Filtra ventas por periodo, usuario o rango personalizado.</p>
       </header>
 
-      <div className="panel grid gap-2 md:grid-cols-4">
+      <div className="panel grid gap-2 md:grid-cols-5">
         <select
-          value={period}
-          onChange={(e) => setPeriod(e.target.value as Period)}
+          value={reportMode}
+          onChange={(e) => setReportMode(e.target.value as ReportMode)}
           className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
         >
-          {periodOptions.map((item) => (
-            <option key={item.value} value={item.value}>
-              {item.label}
-            </option>
-          ))}
+          <option value="predeterminado">Predeterminado</option>
+          <option value="ajustado">Ajustado</option>
         </select>
+
+        {reportMode === "predeterminado" ? (
+          <select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value as Period)}
+            className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"
+          >
+            {periodOptions.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type="date"
+            value={customFrom}
+            onChange={(e) => setCustomFrom(e.target.value)}
+            className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
+          />
+        )}
+
+        {reportMode === "ajustado" ? (
+          <input
+            type="date"
+            value={customTo}
+            onChange={(e) => setCustomTo(e.target.value)}
+            className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
+          />
+        ) : null}
 
         <select
           value={selectedUser}
@@ -236,54 +270,18 @@ function ReportsView() {
 
         <button
           type="button"
-          onClick={() => setCustomMode((prev) => !prev)}
-          className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700"
+          onClick={() => {
+            if (reportMode === "predeterminado") {
+              void runPresetReport(period, selectedUser);
+              return;
+            }
+            void runCustomReport();
+          }}
+          className="rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-bold text-white"
         >
-          {customMode ? "Volver a filtro automatico" : "Custom por rango"}
+          {reportMode === "predeterminado" ? "Actualizar reporte" : "Consultar rango"}
         </button>
-
-        {customMode ? (
-          <button
-            type="button"
-            onClick={runCustomReport}
-            className="rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-bold text-white"
-          >
-            Aplicar custom
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => runAutoReport(period, selectedUser)}
-            className="rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-bold text-white"
-          >
-            Actualizar reporte
-          </button>
-        )}
       </div>
-
-      {customMode ? (
-        <div className="panel grid gap-2 md:grid-cols-3">
-          <input
-            type="date"
-            value={customFrom}
-            onChange={(e) => setCustomFrom(e.target.value)}
-            className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
-          />
-          <input
-            type="date"
-            value={customTo}
-            onChange={(e) => setCustomTo(e.target.value)}
-            className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm"
-          />
-          <button
-            type="button"
-            onClick={runCustomReport}
-            className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white"
-          >
-            Consultar rango
-          </button>
-        </div>
-      ) : null}
 
       <div className="panel">
         <p className="grid-title">Ventas detalladas</p>

@@ -44,14 +44,9 @@ function PosView() {
   const columnDefs = useMemo<ColDef<CartRow>[]>(
     () => [
       {
-        field: "description",
-        headerName: "Producto",
-        width: 260
-      },
-      {
         field: "cantidad",
         headerName: "Cantidad",
-        width: 160,
+        width: 170,
         sortable: false,
         cellRenderer: (p: any) => {
           const row = p.data as CartRow | undefined;
@@ -83,10 +78,15 @@ function PosView() {
         }
       },
       {
+        field: "description",
+        headerName: "Producto",
+        width: 260
+      },
+      {
         field: "subtotal",
         headerName: "Precio",
         width: 140,
-        valueFormatter: (p) => `$${Number(p.value).toFixed(2)}`
+        valueFormatter: (p) => `L ${Number(p.value).toFixed(2)}`
       }
     ],
     [adjustQuantity]
@@ -241,15 +241,14 @@ function PosView() {
           </div>
 
           <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Resumen de compra</p>
             <div className="mt-1 flex items-end justify-between">
-              <div>
+              <div className="text-center">
                 <p className="text-sm text-slate-600">Productos agregados</p>
                 <p className="text-lg font-bold text-slate-900">{totalItems}</p>
               </div>
               <div className="text-right">
                 <p className="text-sm text-slate-600">Total actual</p>
-                <p className="text-2xl font-extrabold text-slate-900">${totalVenta.toFixed(2)}</p>
+                <p className="text-2xl font-extrabold text-slate-900">L {totalVenta.toFixed(2)}</p>
               </div>
             </div>
             <div className="mt-3 flex items-center justify-between gap-2">
