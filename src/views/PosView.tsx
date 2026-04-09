@@ -126,10 +126,6 @@ function PosView() {
       return;
     }
 
-    if (data.stockActual <= 0) {
-      setMessage(`Producto sin stock: ${data.description}.`);
-      return;
-    }
 
     setCart((prev) => {
       const existing = prev.find((row) => row.productoId === data.id);
